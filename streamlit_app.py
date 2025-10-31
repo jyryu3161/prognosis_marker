@@ -10,389 +10,195 @@ import tempfile
 import yaml
 from pathlib import Path
 import time
-import os
 
 # Page configuration
 st.set_page_config(page_title="Prognosis Marker", page_icon="🔬", layout="wide")
 
-# Custom CSS - refreshed accessible theme
+# Custom CSS - simple neutral theme
 st.markdown(
     """
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@500;600;700&display=swap');
-
     :root {
-        --pm-primary: #1b4e9b;
-        --pm-primary-dark: #143b75;
-        --pm-accent: #1aa27a;
+        --pm-bg: #f5f7fb;
         --pm-surface: #ffffff;
-        --pm-surface-muted: #f3f6fb;
-        --pm-text: #1f2a37;
-        --pm-text-muted: #5b6b7f;
-        --pm-border: #d7deea;
+        --pm-border: #d9e0eb;
+        --pm-text: #1f2937;
+        --pm-muted: #6b7280;
+        --pm-primary: #2563eb;
+        --pm-primary-dark: #1d4ed8;
     }
 
-    * {
-        font-family: 'Inter', 'Helvetica', sans-serif;
+    html, body, [data-testid="stAppViewContainer"] {
+        background: var(--pm-bg);
         color: var(--pm-text);
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     }
 
-    html, body, .stApp, [data-testid="stAppViewContainer"] {
-        background: var(--pm-surface-muted);
-        color: var(--pm-text);
-    }
-
-    [data-testid="stHeader"] {
-        background: linear-gradient(90deg, rgba(255,255,255,0.95), rgba(243,246,251,0.9));
-        border-bottom: 1px solid var(--pm-border);
-    }
-
-    .main .block-container {
-        padding-top: 3rem;
-        padding-bottom: 3rem;
-        max-width: 1200px;
-    }
-
-    .main-header {
-        font-family: 'Poppins', sans-serif;
-        font-size: 2.6rem;
-        font-weight: 700;
-        color: var(--pm-primary);
-        letter-spacing: -0.02em;
-        margin-bottom: 0.25rem;
+    .block-container {
+        padding-top: 2.5rem;
+        padding-bottom: 2.5rem;
+        max-width: 1100px;
     }
 
     h1, h2, h3 {
-        font-family: 'Poppins', sans-serif;
         color: var(--pm-text);
         font-weight: 600;
     }
 
-    h2 {
-        font-size: 1.45rem;
-        margin-top: 1.75rem;
-        margin-bottom: 1.1rem;
-        border-bottom: 2px solid var(--pm-border);
-        padding-bottom: 0.6rem;
+    .page-title {
+        text-align: center;
+        margin-bottom: 0.5rem;
     }
 
-    p, li, span {
-        line-height: 1.65;
+    .page-subtitle {
+        text-align: center;
+        color: var(--pm-muted);
+        margin-bottom: 2.5rem;
+        font-size: 0.95rem;
+    }
+
+    .section-card {
+        background: var(--pm-surface);
+        border: 1px solid var(--pm-border);
+        border-radius: 12px;
+        padding: 1.5rem 1.75rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+    }
+
+    .section-card h2 {
+        font-size: 1.15rem;
+        margin-bottom: 1rem;
+        padding-bottom: 0.4rem;
+        border-bottom: 1px solid var(--pm-border);
+    }
+
+    .section-card h3 {
+        font-size: 1.05rem;
+        margin-top: 1.2rem;
+        margin-bottom: 0.75rem;
         color: var(--pm-text);
     }
 
-    .stButton>button {
-        width: 100%;
-        background: #ffffff;
-        color: var(--pm-primary) !important;
-        font-weight: 600;
-        font-size: 0.98rem;
-        padding: 0.8rem 1.5rem;
-        border-radius: 10px;
-        border: 1px solid var(--pm-primary);
-        box-shadow: 0 2px 10px rgba(27, 78, 155, 0.10);
-        transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, color 0.2s ease;
-    }
- 
-    .stButton>button:hover {
-        transform: translateY(-1px);
-        background: var(--pm-primary);
+    .stButton>button,
+    [data-testid="baseButton-primary"],
+    [data-testid="baseButton-primaryFormSubmit"] {
+        background: var(--pm-primary) !important;
         color: #ffffff !important;
-        box-shadow: 0 8px 20px rgba(27, 78, 155, 0.22);
+        border: none !important;
+        border-radius: 8px !important;
+        font-weight: 600;
+        padding: 0.65rem 1.4rem;
+        transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.18);
     }
 
-    .stButton>button:focus {
-        outline: 3px solid rgba(27, 78, 155, 0.35);
-        outline-offset: 2px;
+    .stButton>button:hover,
+    [data-testid="baseButton-primary"]:hover,
+    [data-testid="baseButton-primaryFormSubmit"]:hover {
+        background: var(--pm-primary-dark) !important;
+        transform: translateY(-1px);
     }
 
     .stButton>button:disabled {
-        background: var(--pm-border);
-        color: var(--pm-text-muted) !important;
-        box-shadow: none;
+        background: #d1d5db !important;
+        color: #4b5563 !important;
+        box-shadow: none !important;
     }
 
     .stDownloadButton>button {
-        background: #ffffff;
-        color: var(--pm-accent) !important;
-        border-radius: 10px;
-        border: 1px solid var(--pm-accent);
-        font-weight: 600;
-        padding: 0.75rem 1.25rem;
-        transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, color 0.2s ease;
+        border: 1px solid var(--pm-primary) !important;
+        color: var(--pm-primary) !important;
+        background: #ffffff !important;
+        border-radius: 8px !important;
+        font-weight: 600 !important;
+        padding: 0.6rem 1.4rem !important;
     }
 
     .stDownloadButton>button:hover {
-        transform: translateY(-1px);
-        background: var(--pm-accent);
+        background: var(--pm-primary) !important;
         color: #ffffff !important;
-        box-shadow: 0 10px 24px rgba(26, 162, 122, 0.28);
-    }
-
-    .stForm, [data-testid="stExpander"], .stFileUploader {
-        background: var(--pm-surface);
-        border-radius: 14px;
-        border: 1px solid var(--pm-border);
-        box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
-    }
-
-    .stForm {
-        padding: 2rem;
-    }
-
-    [data-testid="stExpander"] > summary {
-        background: linear-gradient(180deg, #ffffff 0%, #f7f9fc 100%);
-        border-radius: 14px;
-        font-weight: 600;
-        color: var(--pm-text);
-        padding: 0.9rem 1.1rem;
-    }
-
-    .streamlit-expanderHeader:hover {
-        background-color: #eef2f8;
-    }
-
-    [data-testid="stExpander"] > div[role="group"] {
-        border-top: 1px solid var(--pm-border);
-        padding: 1.25rem 1.1rem 1.4rem;
-    }
-
-    [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, rgba(255,255,255,0.97) 0%, rgba(243,246,251,0.9) 100%);
-        border-right: 1px solid var(--pm-border);
-    }
-
-    [data-testid="stSidebar"] > div {
-        padding-top: 2.2rem;
     }
 
     .stTextInput>div>div>input,
     .stSelectbox>div>div>div,
-    .stSelectbox [data-baseweb="select"] > div,
-    .stNumberInput>div,
+    .stSelectbox>div>div>div>input,
     .stNumberInput>div>div>input,
-    .stNumberInput input,
+    .stNumberInput>div>div,
     .stTextArea>div>div>textarea {
-        border: 1px solid var(--pm-border);
-        border-radius: 10px;
-        padding: 0.7rem 0.85rem;
-        font-size: 0.98rem;
-        color: var(--pm-text);
-        background-color: var(--pm-surface) !important;
-        transition: border-color 0.2s ease, box-shadow 0.2s ease;
-    }
-
-    /* Number input container and steppers */
-    .stNumberInput > div {
-        background: var(--pm-surface) !important;
+        border-radius: 8px !important;
+        border: 1px solid var(--pm-border) !important;
+        background: #ffffff !important;
         color: var(--pm-text) !important;
-        overflow: hidden;
-        border-radius: 10px !important;
-    }
-    .stNumberInput [data-baseweb="input"],
-    .stNumberInput [data-testid="baseButton-secondary"],
-    .stNumberInput [data-testid="baseButton-secondaryFormSubmit"],
-    .stNumberInput input {
-        background: var(--pm-surface) !important;
-        color: var(--pm-text) !important;
-        border: none !important;
         box-shadow: none !important;
     }
-    .stNumberInput button,
-    .stNumberInput [role="spinbutton"] button {
-        background: var(--pm-surface) !important;
-        color: var(--pm-text) !important;
+
+    .stNumberInput>div>div {
+        border-radius: 8px !important;
+    }
+
+    .stNumberInput button {
         border-left: 1px solid var(--pm-border) !important;
-        border-top: none !important;
-        border-right: none !important;
-        border-bottom: none !important;
+        background: #ffffff !important;
+        color: var(--pm-text) !important;
     }
 
     .stTextInput>div>div>input:focus,
     .stSelectbox>div>div>div:focus,
     .stNumberInput>div>div>input:focus,
     .stTextArea>div>div>textarea:focus {
-        border-color: var(--pm-primary);
-        box-shadow: 0 0 0 3px rgba(27, 78, 155, 0.18);
+        border-color: var(--pm-primary) !important;
+        box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12) !important;
     }
 
-    .stRadio > label {
-        font-weight: 600;
-        color: var(--pm-text);
+    [data-baseweb="select"] span {
+        color: var(--pm-text) !important;
     }
 
-    .stSlider>div>div>div>div {
-        background-color: var(--pm-primary);
+    [data-baseweb="menu"] {
+        background: #ffffff !important;
+        border: 1px solid var(--pm-border) !important;
+        border-radius: 8px !important;
+        box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12) !important;
     }
 
-    .stFileUploader {
-        padding: 2rem 1.75rem;
+    [data-baseweb="menu"] [role="option"] {
+        color: var(--pm-text) !important;
+        background: transparent !important;
+        border-radius: 6px;
+    }
+
+    [data-baseweb="menu"] [role="option"]:hover,
+    [data-baseweb="menu"] [aria-selected="true"] {
+        background: rgba(37, 99, 235, 0.15) !important;
+        color: var(--pm-primary) !important;
+    }
+
+    [data-testid="stFileUploader"] {
+        border-radius: 12px;
+        border: 1px dashed var(--pm-border);
+        padding: 1.2rem 1rem;
+        background: #ffffff;
     }
 
     [data-testid="stFileUploaderDropzone"] {
-        background: var(--pm-surface);
-        border: 2px dashed var(--pm-primary);
-        border-radius: 14px;
-        transition: border-color 0.2s ease, background-color 0.2s ease;
-    }
-
-    [data-testid="stFileUploaderDropzone"]:hover {
-        border-color: var(--pm-primary-dark);
-        background: #f0f4ff;
-    }
-
-    [data-testid="stFileUploaderDropzone"] * {
-        color: var(--pm-text) !important;
-    }
-
-    [data-testid="stFileUploaderDropzone"] button {
-        background: #ffffff;
-        color: var(--pm-primary) !important;
-        border-radius: 8px;
-        border: 1px solid var(--pm-primary);
-        font-weight: 600;
-        padding: 0.45rem 1rem;
-        box-shadow: none;
-    }
-
-    [data-testid="stFileUploaderDropzone"] button:hover {
-        background: var(--pm-primary);
-        color: #ffffff !important;
-    }
-
-    /* Selectbox dropdown menu and options */
-    [data-baseweb="select"] div {
-        background: var(--pm-surface) !important;
-        color: var(--pm-text) !important;
-        border-color: var(--pm-border) !important;
-    }
-    [data-baseweb="menu"],
-    [data-baseweb="popover"],
-    [data-baseweb="menu"] div,
-    [data-baseweb="menu"] ul,
-    [data-baseweb="popover"] div {
-        background: var(--pm-surface) !important;
-        color: var(--pm-text) !important;
         border: none !important;
-        box-shadow: 0 20px 48px rgba(15, 23, 42, 0.12);
-        padding: 0.5rem 0.25rem;
-    }
-    [data-baseweb="menu"] [role="option"] {
         background: transparent !important;
-        color: var(--pm-text) !important;
-        border: none !important;
-        border-radius: 8px !important;
-        margin: 0.15rem 0.5rem;
-        padding: 0.55rem 0.65rem;
-    }
-    [data-baseweb="menu"] [role="option"] > div {
-        border: none !important;
-    }
-    [data-baseweb="menu"] [role="option"]:hover,
-    [data-baseweb="menu"] [aria-selected="true"],
-    [data-baseweb="menu"] [aria-selected="true"] > div {
-        background: #eef2f8 !important;
-        color: var(--pm-primary) !important;
-    }
-    [data-baseweb="menu"] [role="option"]:active {
-        background: rgba(26, 162, 122, 0.08) !important;
-    }
-
-    [data-testid="stForm"] button,
-    [data-testid="baseButton-primary"],
-    [data-testid="baseButton-primaryFormSubmit"] {
-        width: 100%;
-        background: #ffffff !important;
-        color: var(--pm-primary) !important;
-        font-weight: 600;
-        font-size: 0.98rem;
-        padding: 0.8rem 1.5rem;
-        border-radius: 10px;
-        border: 1px solid var(--pm-primary);
-        box-shadow: 0 2px 10px rgba(27, 78, 155, 0.10);
-        transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, color 0.2s ease;
-    }
-    [data-testid="stForm"] button:hover,
-    [data-testid="baseButton-primary"]:hover,
-    [data-testid="baseButton-primaryFormSubmit"]:hover {
-        transform: translateY(-1px);
-        background: var(--pm-primary) !important;
-        color: #ffffff !important;
-        box-shadow: 0 8px 20px rgba(27, 78, 155, 0.22);
-    }
-    [data-testid="stForm"] button:focus,
-    [data-testid="baseButton-primary"]:focus,
-    [data-testid="baseButton-primaryFormSubmit"]:focus {
-        outline: 3px solid rgba(27, 78, 155, 0.35);
-        outline-offset: 2px;
     }
 
     .stAlert {
-        border-radius: 12px;
+        border-radius: 10px;
         border: 1px solid var(--pm-border);
-        padding: 1.1rem 1.3rem;
-        background: linear-gradient(180deg, #ffffff 0%, #f7f9fc 100%);
-    }
-
-    .stSuccess {
-        border-left: 4px solid var(--pm-accent);
-    }
-
-    .stInfo {
-        border-left: 4px solid var(--pm-primary);
-    }
-
-    div[data-testid="stMetricValue"] {
-        font-size: 1.75rem;
-        font-weight: 600;
-        color: var(--pm-primary);
-    }
-
-    div[data-testid="stMetricLabel"] {
-        font-size: 0.92rem;
-        font-weight: 500;
-        color: var(--pm-text-muted);
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-    }
-
-    .stDataFrame {
-        border: 1px solid var(--pm-border);
-        border-radius: 12px;
-        overflow: hidden;
-        background: var(--pm-surface) !important;
-    }
-    .stDataFrame *,
-    .stDataFrame table,
-    .stDataFrame th,
-    .stDataFrame td,
-    [data-testid="stDataFrame"],
-    [data-testid="stDataFrame"] div,
-    [data-testid="stDataFrame"] th,
-    [data-testid="stDataFrame"] td {
-        background: var(--pm-surface) !important;
-        color: var(--pm-text) !important;
-        border-color: var(--pm-border) !important;
-    }
-
-    .stProgress > div > div > div > div {
-        background: var(--pm-primary);
     }
 
     hr {
         border: none;
         height: 1px;
-        background-color: var(--pm-border);
-        margin: 2.2rem 0;
+        background: var(--pm-border);
+        margin: 1.5rem 0;
     }
 
-    code {
-        background-color: rgba(27, 78, 155, 0.1);
-        color: var(--pm-primary);
-        padding: 0.25rem 0.5rem;
-        border-radius: 6px;
-        font-size: 0.92em;
-    }
+    footer {visibility: hidden;}
 </style>
 """,
     unsafe_allow_html=True,
@@ -405,9 +211,9 @@ if "results_dir" not in st.session_state:
     st.session_state.results_dir = None
 
 # Header
-st.markdown('<h1 class="main-header">🔬 Prognosis Marker</h1>', unsafe_allow_html=True)
+st.markdown("<h1 class='page-title'>🔬 Prognosis Marker</h1>", unsafe_allow_html=True)
 st.markdown(
-    '<p style="font-size: 1.1rem; color: #5f6368; margin-bottom: 2rem;">Biostatistical Gene Signature Analysis Platform</p>',
+    "<p class='page-subtitle'>Biostatistical Gene Signature Analysis Platform</p>",
     unsafe_allow_html=True,
 )
 
@@ -415,7 +221,7 @@ st.markdown(
 col1, col2 = st.columns([2, 1])
 
 with col1:
-    # Step 1: Upload data
+    st.markdown('<div class="section-card">', unsafe_allow_html=True)
     st.markdown("## 📁 1. Data Upload")
 
     # Example data load button
@@ -480,20 +286,19 @@ with col1:
                 else:
                     file_size = Path(uploaded_file).stat().st_size / 1024
                 st.metric("Size", f"{file_size:.1f} KB")
+    st.markdown('</div>', unsafe_allow_html=True)
 
-        st.markdown("---")
-
-        # Step 2: Analysis type
+    if uploaded_file:
+        st.markdown('<div class="section-card">', unsafe_allow_html=True)
         st.markdown("## 🎯 2. Analysis Type")
         analysis_type = st.radio(
             "Select analysis type",
             ["Binary Classification", "Survival Analysis"],
             horizontal=True,
         )
+        st.markdown('</div>', unsafe_allow_html=True)
 
-        st.markdown("---")
-
-        # Step 3: Configuration
+        st.markdown('<div class="section-card">', unsafe_allow_html=True)
         st.markdown("## ⚙️ 3. Configuration")
 
         columns = df.columns.tolist()
@@ -571,8 +376,8 @@ with col1:
                     yaml.dump(config, f)
 
                 # Run analysis
-                st.markdown("---")
-                st.markdown("## 🔄 Running Analysis...")
+                st.markdown("<hr/>", unsafe_allow_html=True)
+                st.markdown("### 🔄 Running Analysis...")
 
                 progress_bar = st.progress(0)
                 status_text = st.empty()
@@ -625,7 +430,10 @@ with col1:
                 except Exception as e:
                     st.error(f"❌ Error: {str(e)}")
 
+        st.markdown('</div>', unsafe_allow_html=True)
+
 with col2:
+    st.markdown('<div class="section-card">', unsafe_allow_html=True)
     st.markdown("## 💡 Help")
 
     st.info(
@@ -684,9 +492,11 @@ with col2:
         """
         )
 
+    st.markdown('</div>', unsafe_allow_html=True)
+
 # Results section
 if st.session_state.analysis_complete and st.session_state.results_dir:
-    st.markdown("---")
+    st.markdown('<div class="section-card">', unsafe_allow_html=True)
     st.markdown("## 📊 Analysis Results")
 
     results_dir = Path(st.session_state.results_dir)
@@ -763,15 +573,17 @@ if st.session_state.analysis_complete and st.session_state.results_dir:
     else:
         st.warning("Results directory not found.")
 
+    st.markdown('</div>', unsafe_allow_html=True)
+
 # Footer
-st.markdown("---")
+st.markdown("<hr/>", unsafe_allow_html=True)
 st.markdown(
     """
     <div style='text-align: center; padding: 2rem 0 1rem 0;'>
-        <p style='font-size: 0.9rem; color: #5f6368; margin-bottom: 0.3rem;'>
+        <p style='font-size: 0.9rem; color: #4b5563; margin-bottom: 0.3rem;'>
             <strong>Prognosis Marker</strong> — Academic Bioinformatics Research Tool
         </p>
-        <p style='font-size: 0.85rem; color: #9e9e9e;'>
+        <p style='font-size: 0.85rem; color: #94a3b8;'>
             Powered by R, Python & Streamlit | © 2025
         </p>
     </div>
