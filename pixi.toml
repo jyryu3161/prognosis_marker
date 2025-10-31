@@ -7,6 +7,7 @@ platforms = ["linux-64", "osx-64", "osx-arm64"]
 description = "Stepwise AUC optimisation workflows for binary and survival prognosis markers"
 
 [dependencies]
+# R dependencies
 r-base = "4.3.*"
 r-yaml = "*"
 r-ggplot2 = "*"
@@ -20,7 +21,25 @@ r-survival = "*"
 r-png = "*"
 r-magrittr = "*"
 
+# Python dependencies for Streamlit codebase analyzer
+python = ">=3.9,<3.12"
+streamlit = ">=1.31.0"
+pandas = ">=2.1.0"
+plotly = ">=5.18.0"
+pygments = ">=2.17.0"
+matplotlib = ">=3.8.0"
+seaborn = ">=0.13.0"
+gitpython = ">=3.1.0"
+pyyaml = ">=6.0.0"
+networkx = ">=3.2.0"
+
 [tasks]
+# R package installation
 install-r-packages = "R -q -e \"install.packages(c('ROCR','pROC','cutpointr','coefplot','caret','nsROC','survival','yaml','ggplot2'), repos='https://cloud.r-project.org')\""
+
+# R analysis workflows
 binary = "Rscript Main_Binary.R --config config/example_analysis.yaml"
 survival = "Rscript Main_Survival.R --config config/example_analysis.yaml"
+
+# Streamlit codebase analyzer
+streamlit = "streamlit run streamlit_app.py --server.port 8501 --server.address localhost"

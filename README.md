@@ -60,3 +60,173 @@ All run-time options are captured in YAML. The template at `config/example_analy
 - **Output directory conflicts** – the workflows create their output folders on demand. If you re-run with the same directory and want a clean slate, delete the folder (e.g., `rm -rf results/binary`) before launching a new job.【F:Main_Binary.R†L116-L137】【F:Main_Survival.R†L122-L143】
 - **Long runtimes** – decrease `num_seed` or use a larger `split_prop` to reduce the number of resampling iterations during early experimentation.【F:config/example_analysis.yaml†L7-L15】【F:config/example_analysis.yaml†L19-L26】 Once satisfied, revert to the default (100 iterations, 70/30 split) for publication-ready estimates.
 
+---
+
+## 🔬 Streamlit Codebase Analyzer
+
+This project includes a modern web-based GUI for exploring and analyzing the codebase in real-time. The Streamlit application provides an interactive dashboard with visualizations, file browsing, code search, and comprehensive analysis tools.
+
+### Features
+
+- **📊 Dashboard**: Project statistics, file distribution charts, and code metrics
+- **📁 File Explorer**: Browse project structure with syntax-highlighted code viewer
+- **🔍 Code Search**: Full-text search with regex support across all files
+- **🔧 Analysis Tools**:
+  - R file analysis (functions, libraries, code statistics)
+  - Configuration file parsing
+  - Dependency visualization
+- **📜 Git History**: Commit timeline, branch information, and repository status
+
+### Quick Start with Automation Scripts
+
+The easiest way to get started is using the provided automation scripts:
+
+#### 1. Automated Installation and Launch
+
+Run the all-in-one script that installs dependencies and launches the web interface:
+
+```bash
+./install.sh
+```
+
+This script will:
+- Check for pixi installation
+- Install all dependencies (R and Python packages)
+- Launch the Streamlit server automatically
+- Open your browser to http://localhost:8501
+
+#### 2. Launch Server Only
+
+If you've already installed dependencies and just want to start the server:
+
+```bash
+./run_server.sh
+```
+
+This will start the Streamlit web interface on http://localhost:8501 using the pixi environment.
+
+### Manual Installation and Usage
+
+If you prefer manual control over the installation process:
+
+#### Step 1: Install Dependencies
+
+```bash
+# Ensure pixi is installed first
+curl -fsSL https://pixi.sh/install.sh | bash
+
+# Install all project dependencies (R and Python)
+pixi install
+
+# Optional: Install additional R packages from CRAN
+pixi run install-r-packages
+```
+
+The `pixi install` command will automatically set up:
+- R 4.3 with all required statistical packages
+- Python 3.9+ with Streamlit and data analysis libraries
+- All dependencies declared in `pixi.toml`
+
+#### Step 2: Launch the Streamlit Application
+
+Using pixi task (recommended):
+
+```bash
+pixi run streamlit
+```
+
+Or manually:
+
+```bash
+pixi run streamlit run streamlit_app.py --server.port 8501 --server.address localhost
+```
+
+#### Step 3: Access the Web Interface
+
+Open your browser and navigate to:
+
+```
+http://localhost:8501
+```
+
+The Streamlit dashboard will load automatically with the codebase analysis interface.
+
+### Streamlit Application Components
+
+The analyzer consists of two main modules:
+
+- **`streamlit_app.py`**: Main web application with interactive UI
+  - Modern, responsive design with gradient styling
+  - Multiple navigation pages (Dashboard, File Explorer, Code Search, Analysis Tools, Git History)
+  - Interactive charts using Plotly
+  - Real-time code syntax highlighting with Pygments
+
+- **`code_analyzer.py`**: Backend analysis engine
+  - File system traversal and statistics collection
+  - R code parsing (functions, libraries, comments)
+  - YAML configuration analysis
+  - Git repository integration
+  - Full-text search with regex support
+
+### Navigation Guide
+
+1. **📊 Dashboard**:
+   - Overview of project metrics (total files, lines of code, languages)
+   - Interactive pie and bar charts
+   - Detailed file list with download option
+
+2. **📁 File Explorer**:
+   - Tree view of project structure
+   - File content viewer with syntax highlighting
+   - R file analysis (functions defined, libraries imported, code statistics)
+   - File download capability
+
+3. **🔍 Code Search**:
+   - Search across all project files
+   - Regex pattern support
+   - Filter by file type
+   - Export search results to CSV
+
+4. **🔧 Analysis Tools**:
+   - Deep-dive R file analysis
+   - Configuration file parsing (YAML, TOML)
+   - Dependency tracking and visualization
+   - Project-wide library usage summary
+
+5. **📜 Git History**:
+   - Recent commit history
+   - Branch listing and current branch status
+   - Commit timeline visualization
+   - Working tree status
+
+### Technology Stack
+
+The Streamlit analyzer leverages:
+
+- **Streamlit**: Modern web framework for data applications
+- **Plotly**: Interactive charts and visualizations
+- **Pandas**: Data manipulation and CSV handling
+- **Pygments**: Syntax highlighting for code display
+- **GitPython**: Git repository integration
+- **Matplotlib/Seaborn**: Additional plotting capabilities
+
+### Stopping the Server
+
+To stop the Streamlit server, press `Ctrl+C` in the terminal where it's running.
+
+### Troubleshooting Streamlit
+
+- **Port already in use**: If port 8501 is occupied, modify the port in `run_server.sh` or use:
+  ```bash
+  pixi run streamlit run streamlit_app.py --server.port 8502
+  ```
+
+- **Browser doesn't open**: Manually navigate to http://localhost:8501 in your browser
+
+- **Missing Python packages**: Re-run `pixi install` to ensure all Python dependencies are installed
+
+- **Permission denied on scripts**: Make scripts executable:
+  ```bash
+  chmod +x install.sh run_server.sh
+  ```
+
