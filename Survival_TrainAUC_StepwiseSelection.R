@@ -106,7 +106,9 @@ SurvTrainAUCStepwise <- function(totvar,dat,fixvar,excvar,horizon,numSeed,SplitP
     forward.var1 <- forward_ls[which.max(as.numeric(forward_ls[,2])),1];forward.tsauc1 <-forward_ls[which.max(as.numeric(forward_ls[,2])),3]
     forward.newstep <-matrix(c(forward.var1,forward.trauc1,forward.tsauc1),nrow=1)
     if (length(setdiff(gsub(" ","",strsplit(forward.var1,"\\+")[[1]]),""))==1){
-      dir.create(outdir)
+      if (!dir.exists(outdir)) {
+        dir.create(outdir, recursive = TRUE)
+      }
       imtres <- rbind(imtres, forward.newstep)
       colnames(forward.newstep)<-c('Variable','trainAUC','testAUC')
       eval(parse(text = paste("write.csv(forward.newstep,'./",outdir,"/Intermediate_Forward",nrow(imtres),".csv',row.names = F)",sep = "")))

@@ -1,0 +1,30 @@
+# Shared defaults
+workdir: .
+data_file: Example_data.csv
+
+binary:
+  data_file: Example_data.csv
+  sample_id: sample
+  outcome: OS
+  time_variable: OS.year
+  split_prop: 0.7
+  num_seed: 100
+  output_dir: results/binary
+  exclude: []
+  include: []
+  # Optionally constrain the candidate feature set by listing column names here.
+  # features:
+
+survival:
+  data_file: Example_data.csv
+  sample_id: sample
+  time_variable: OS.year
+  event: OS
+  horizon: 5
+  split_prop: 0.7
+  num_seed: 100
+  output_dir: results/survival
+  exclude: []
+  include: []
+  # Optionally constrain the candidate feature set by listing column names here.
+  # features:
