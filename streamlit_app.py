@@ -83,20 +83,22 @@ st.markdown(
 
     .stButton>button {
         width: 100%;
-        background: linear-gradient(135deg, var(--pm-primary), var(--pm-primary-dark));
-        color: #ffffff !important;
+        background: #ffffff;
+        color: var(--pm-primary) !important;
         font-weight: 600;
         font-size: 0.98rem;
         padding: 0.8rem 1.5rem;
         border-radius: 10px;
-        border: none;
-        box-shadow: 0 6px 18px rgba(27, 78, 155, 0.25);
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        border: 1px solid var(--pm-primary);
+        box-shadow: 0 2px 10px rgba(27, 78, 155, 0.10);
+        transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, color 0.2s ease;
     }
-
+ 
     .stButton>button:hover {
         transform: translateY(-1px);
-        box-shadow: 0 10px 24px rgba(27, 78, 155, 0.32);
+        background: var(--pm-primary);
+        color: #ffffff !important;
+        box-shadow: 0 8px 20px rgba(27, 78, 155, 0.22);
     }
 
     .stButton>button:focus {
@@ -111,17 +113,19 @@ st.markdown(
     }
 
     .stDownloadButton>button {
-        background: linear-gradient(135deg, var(--pm-accent), #138b66);
-        color: #ffffff !important;
+        background: #ffffff;
+        color: var(--pm-accent) !important;
         border-radius: 10px;
-        border: none;
+        border: 1px solid var(--pm-accent);
         font-weight: 600;
         padding: 0.75rem 1.25rem;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, color 0.2s ease;
     }
 
     .stDownloadButton>button:hover {
         transform: translateY(-1px);
+        background: var(--pm-accent);
+        color: #ffffff !important;
         box-shadow: 0 10px 24px rgba(26, 162, 122, 0.28);
     }
 
@@ -164,15 +168,44 @@ st.markdown(
 
     .stTextInput>div>div>input,
     .stSelectbox>div>div>div,
+    .stSelectbox [data-baseweb="select"] > div,
+    .stNumberInput>div,
     .stNumberInput>div>div>input,
+    .stNumberInput input,
     .stTextArea>div>div>textarea {
         border: 1px solid var(--pm-border);
         border-radius: 10px;
         padding: 0.7rem 0.85rem;
         font-size: 0.98rem;
         color: var(--pm-text);
-        background-color: var(--pm-surface);
+        background-color: var(--pm-surface) !important;
         transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    /* Number input container and steppers */
+    .stNumberInput > div {
+        background: var(--pm-surface) !important;
+        color: var(--pm-text) !important;
+        overflow: hidden;
+        border-radius: 10px !important;
+    }
+    .stNumberInput [data-baseweb="input"],
+    .stNumberInput [data-testid="baseButton-secondary"],
+    .stNumberInput [data-testid="baseButton-secondaryFormSubmit"],
+    .stNumberInput input {
+        background: var(--pm-surface) !important;
+        color: var(--pm-text) !important;
+        border: none !important;
+        box-shadow: none !important;
+    }
+    .stNumberInput button,
+    .stNumberInput [role="spinbutton"] button {
+        background: var(--pm-surface) !important;
+        color: var(--pm-text) !important;
+        border-left: 1px solid var(--pm-border) !important;
+        border-top: none !important;
+        border-right: none !important;
+        border-bottom: none !important;
     }
 
     .stTextInput>div>div>input:focus,
@@ -213,17 +246,85 @@ st.markdown(
     }
 
     [data-testid="stFileUploaderDropzone"] button {
-        background: var(--pm-primary);
-        color: #ffffff !important;
+        background: #ffffff;
+        color: var(--pm-primary) !important;
         border-radius: 8px;
-        border: none;
+        border: 1px solid var(--pm-primary);
         font-weight: 600;
         padding: 0.45rem 1rem;
         box-shadow: none;
     }
 
     [data-testid="stFileUploaderDropzone"] button:hover {
-        background: var(--pm-primary-dark);
+        background: var(--pm-primary);
+        color: #ffffff !important;
+    }
+
+    /* Selectbox dropdown menu and options */
+    [data-baseweb="select"] div {
+        background: var(--pm-surface) !important;
+        color: var(--pm-text) !important;
+        border-color: var(--pm-border) !important;
+    }
+    [data-baseweb="menu"],
+    [data-baseweb="popover"],
+    [data-baseweb="menu"] div,
+    [data-baseweb="menu"] ul,
+    [data-baseweb="popover"] div {
+        background: var(--pm-surface) !important;
+        color: var(--pm-text) !important;
+        border: none !important;
+        box-shadow: 0 20px 48px rgba(15, 23, 42, 0.12);
+        padding: 0.5rem 0.25rem;
+    }
+    [data-baseweb="menu"] [role="option"] {
+        background: transparent !important;
+        color: var(--pm-text) !important;
+        border: none !important;
+        border-radius: 8px !important;
+        margin: 0.15rem 0.5rem;
+        padding: 0.55rem 0.65rem;
+    }
+    [data-baseweb="menu"] [role="option"] > div {
+        border: none !important;
+    }
+    [data-baseweb="menu"] [role="option"]:hover,
+    [data-baseweb="menu"] [aria-selected="true"],
+    [data-baseweb="menu"] [aria-selected="true"] > div {
+        background: #eef2f8 !important;
+        color: var(--pm-primary) !important;
+    }
+    [data-baseweb="menu"] [role="option"]:active {
+        background: rgba(26, 162, 122, 0.08) !important;
+    }
+
+    [data-testid="stForm"] button,
+    [data-testid="baseButton-primary"],
+    [data-testid="baseButton-primaryFormSubmit"] {
+        width: 100%;
+        background: #ffffff !important;
+        color: var(--pm-primary) !important;
+        font-weight: 600;
+        font-size: 0.98rem;
+        padding: 0.8rem 1.5rem;
+        border-radius: 10px;
+        border: 1px solid var(--pm-primary);
+        box-shadow: 0 2px 10px rgba(27, 78, 155, 0.10);
+        transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, color 0.2s ease;
+    }
+    [data-testid="stForm"] button:hover,
+    [data-testid="baseButton-primary"]:hover,
+    [data-testid="baseButton-primaryFormSubmit"]:hover {
+        transform: translateY(-1px);
+        background: var(--pm-primary) !important;
+        color: #ffffff !important;
+        box-shadow: 0 8px 20px rgba(27, 78, 155, 0.22);
+    }
+    [data-testid="stForm"] button:focus,
+    [data-testid="baseButton-primary"]:focus,
+    [data-testid="baseButton-primaryFormSubmit"]:focus {
+        outline: 3px solid rgba(27, 78, 155, 0.35);
+        outline-offset: 2px;
     }
 
     .stAlert {
@@ -259,7 +360,19 @@ st.markdown(
         border: 1px solid var(--pm-border);
         border-radius: 12px;
         overflow: hidden;
-        background: var(--pm-surface);
+        background: var(--pm-surface) !important;
+    }
+    .stDataFrame *,
+    .stDataFrame table,
+    .stDataFrame th,
+    .stDataFrame td,
+    [data-testid="stDataFrame"],
+    [data-testid="stDataFrame"] div,
+    [data-testid="stDataFrame"] th,
+    [data-testid="stDataFrame"] td {
+        background: var(--pm-surface) !important;
+        color: var(--pm-text) !important;
+        border-color: var(--pm-border) !important;
     }
 
     .stProgress > div > div > div > div {
@@ -342,7 +455,18 @@ with col1:
         st.success(f"✓ File loaded: {file_name}")
 
         with st.expander("📊 Data Preview"):
-            st.dataframe(df.head(10), use_container_width=True)
+            preview_df = df.head(10)
+            try:
+                styled = preview_df.style.set_properties(
+                    **{
+                        "background-color": "#ffffff",
+                        "color": "#1f2a37",
+                        "border-color": "#d7deea",
+                    }
+                )
+                st.dataframe(styled, use_container_width=True, hide_index=True)
+            except Exception:
+                st.dataframe(preview_df, use_container_width=True, hide_index=True)
 
             col_a, col_b, col_c = st.columns(3)
             with col_a:
