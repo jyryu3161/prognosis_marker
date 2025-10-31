@@ -50,20 +50,21 @@ else
 
     # Check operating system
     if [[ "$OSTYPE" == "linux-gnu"* ]] || [[ "$OSTYPE" == "darwin"* ]]; then
+        # Install pixi using the official installer
         curl -fsSL https://pixi.sh/install.sh | bash
 
-        # Source the shell configuration to get pixi in PATH
-        if [ -f "$HOME/.bashrc" ]; then
-            source "$HOME/.bashrc"
-        fi
-        if [ -f "$HOME/.zshrc" ]; then
-            source "$HOME/.zshrc"
-        fi
-
-        # Add to current session PATH
+        # Add pixi to PATH for current session (works on both macOS and Linux)
+        # pixi installs to ~/.pixi/bin by default
         export PATH="$HOME/.pixi/bin:$PATH"
 
-        print_success "pixi installed successfully"
+        # Verify pixi binary exists
+        if [ -f "$HOME/.pixi/bin/pixi" ]; then
+            print_success "pixi installed successfully to $HOME/.pixi/bin"
+        else
+            print_error "pixi binary not found after installation"
+            print_info "Please check pixi installation: https://pixi.sh/latest/#installation"
+            exit 1
+        fi
     else
         print_error "Unsupported operating system. Please install pixi manually from https://pixi.sh"
         exit 1

@@ -1,650 +1,696 @@
 """
-Prognosis Marker Codebase Analyzer
-Modern Streamlit Dashboard for Code Analysis
+Prognosis Marker - Simple Analysis Interface
+데이터 업로드하고 분석 실행하는 간단한 웹 인터페이스
 """
 
 import streamlit as st
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
+import subprocess
+import tempfile
+import yaml
 from pathlib import Path
-from code_analyzer import CodeAnalyzer
-from pygments import highlight
-from pygments.lexers import get_lexer_by_name, guess_lexer_for_filename
-from pygments.formatters import HtmlFormatter
+import time
 import os
 
 # Page configuration
-st.set_page_config(
-    page_title="Prognosis Marker Analyzer",
-    page_icon="🔬",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+st.set_page_config(page_title="Prognosis Marker", page_icon="🔬", layout="wide")
 
-# Custom CSS for modern UI
-st.markdown("""
+# Custom CSS - Bioinformatics Clean White Design
+st.markdown(
+    """
 <style>
+    /* Import professional fonts */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@500;600;700&display=swap');
+    
+    /* Global Settings */
+    * {
+        font-family: 'Inter', 'Helvetica', sans-serif;
+    }
+    
+    /* Main App Background - Pure White */
+    .stApp {
+        background-color: #ffffff;
+    }
+    
+    /* Main Container Padding */
+    .main .block-container {
+        padding-top: 3rem;
+        padding-bottom: 3rem;
+        max-width: 1200px;
+    }
+    
+    /* Headers - Poppins Font */
     .main-header {
+        font-family: 'Poppins', sans-serif;
         font-size: 2.5rem;
         font-weight: 700;
-        background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
+        color: #1976d2;
         margin-bottom: 0.5rem;
+        letter-spacing: -0.5px;
     }
-    .sub-header {
-        font-size: 1.2rem;
-        color: #666;
-        margin-bottom: 2rem;
-    }
-    .metric-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 1.5rem;
-        border-radius: 10px;
-        color: white;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 2rem;
-    }
-    .stTabs [data-baseweb="tab"] {
-        font-size: 1.1rem;
-        font-weight: 500;
-    }
-    .file-tree {
-        font-family: 'Monaco', 'Courier New', monospace;
-        font-size: 0.9rem;
-    }
-    div[data-testid="stMetricValue"] {
-        font-size: 1.8rem;
+    
+    h1, h2, h3 {
+        font-family: 'Poppins', sans-serif;
+        color: #1e1e1e;
         font-weight: 600;
     }
-    .code-viewer {
+    
+    h2 {
+        font-size: 1.5rem;
+        margin-top: 1.5rem;
+        margin-bottom: 1rem;
+        border-bottom: 2px solid #e0e0e0;
+        padding-bottom: 0.5rem;
+    }
+    
+    /* Primary Button Style */
+    .stButton>button {
+        width: 100%;
+        background-color: #1976d2;
+        color: white;
+        font-weight: 500;
+        font-size: 0.95rem;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        border: none;
+        box-shadow: 0 2px 8px rgba(25, 118, 210, 0.2);
+        transition: all 0.2s ease;
+        text-transform: none;
+    }
+    
+    .stButton>button:hover {
+        background-color: #1565c0;
+        box-shadow: 0 4px 12px rgba(25, 118, 210, 0.3);
+        transform: translateY(-1px);
+    }
+    
+    .stButton>button:active {
+        transform: translateY(0);
+    }
+    
+    /* Form Container - Card Style */
+    .stForm {
+        background: #ffffff;
+        padding: 2rem;
+        border-radius: 12px;
+        border: 1px solid #e0e0e0;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+    }
+    
+    /* File Uploader - Force White Background */
+    .stFileUploader {
+        background: #ffffff !important;
+        padding: 2rem;
+        border-radius: 12px;
+        border: 2px dashed #1976d2;
+        transition: border-color 0.2s ease;
+    }
+    
+    .stFileUploader:hover {
+        border-color: #43a047;
+    }
+    
+    /* Force all file uploader children to white background and black text */
+    .stFileUploader > div,
+    .stFileUploader section,
+    .stFileUploader [data-testid="stFileUploadDropzone"],
+    .stFileUploader [data-testid="stFileUploader"],
+    section[data-testid="stFileUploadDropzone"] {
+        background-color: #ffffff !important;
+        color: #1e1e1e !important;
+    }
+    
+    /* File uploader text */
+    .stFileUploader label,
+    .stFileUploader p,
+    .stFileUploader span,
+    section[data-testid="stFileUploadDropzone"] p,
+    section[data-testid="stFileUploadDropzone"] span {
+        color: #1e1e1e !important;
+        font-weight: 500;
+    }
+    
+    .stFileUploader small {
+        color: #5f6368 !important;
+    }
+    
+    /* Drag and drop zone */
+    div[data-testid="stFileUploadDropzone"] > div {
+        background-color: #ffffff !important;
+    }
+    
+    div[data-testid="stFileUploadDropzone"] button {
+        background-color: #ffffff !important;
+        color: #1e1e1e !important;
+        border: 1px solid #1976d2 !important;
+        border-radius: 8px;
+        font-weight: 600;
+    }
+
+    /* Ensure visibility of dropzone helper texts */
+    .stFileUploader [data-testid="stFileUploadDropzone"] * {
+        color: #1e1e1e !important;
+        opacity: 1 !important;
+        filter: none !important;
+    }
+    
+    /* Info/Alert Boxes */
+    .stAlert {
+        background: #ffffff;
+        border-radius: 8px;
+        border: 1px solid #e0e0e0;
+        padding: 1rem;
+    }
+    
+    div[data-baseweb="notification"] {
+        border-radius: 8px;
+    }
+    
+    /* Success Message */
+    .stSuccess {
+        background-color: #e8f5e9;
+        border-left: 4px solid #43a047;
+        color: #1e1e1e;
+    }
+    
+    /* Info Message */
+    .stInfo {
+        background-color: #e3f2fd;
+        border-left: 4px solid #1976d2;
+        color: #1e1e1e;
+    }
+    
+    /* Expander - Clean Card Style */
+    .streamlit-expanderHeader {
+        background-color: #fafafa;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        font-weight: 500;
+        color: #1e1e1e;
+        transition: background-color 0.2s ease;
+    }
+    
+    .streamlit-expanderHeader:hover {
+        background-color: #f5f5f5;
+    }
+    
+    details[open] > .streamlit-expanderHeader {
+        border-bottom: 1px solid #e0e0e0;
+        border-radius: 8px 8px 0 0;
+    }
+    
+    /* Metrics - Academic Style */
+    div[data-testid="stMetricValue"] {
+        font-size: 1.75rem;
+        font-weight: 600;
+        color: #1976d2;
+    }
+    
+    div[data-testid="stMetricLabel"] {
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: #5f6368;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    /* Sidebar - Professional White */
+    section[data-testid="stSidebar"] {
+        background-color: #fafafa;
+        border-right: 1px solid #e0e0e0;
+    }
+    
+    section[data-testid="stSidebar"] > div {
+        padding-top: 2rem;
+    }
+    
+    /* Input Fields */
+    .stTextInput>div>div>input,
+    .stSelectbox>div>div>div,
+    .stNumberInput>div>div>input {
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 0.6rem;
+        font-size: 0.95rem;
+        color: #1e1e1e;
+        background-color: #ffffff;
+        transition: border-color 0.2s ease;
+    }
+    
+    .stTextInput>div>div>input:focus,
+    .stSelectbox>div>div>div:focus,
+    .stNumberInput>div>div>input:focus {
+        border-color: #1976d2;
+        box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.1);
+    }
+    
+    /* Slider */
+    .stSlider>div>div>div>div {
+        background-color: #1976d2;
+    }
+    
+    /* Radio Buttons */
+    .stRadio > label {
+        font-weight: 500;
+        color: #1e1e1e;
+    }
+    
+    /* Divider */
+    hr {
+        border: none;
+        height: 1px;
+        background-color: #e0e0e0;
+        margin: 2rem 0;
+    }
+    
+    /* Dataframe */
+    .stDataFrame {
+        border: 1px solid #e0e0e0;
         border-radius: 8px;
         overflow: hidden;
     }
-    .highlight {
-        border-radius: 8px;
-        padding: 1rem;
-        background: #f8f9fa;
+    
+    /* Progress Bar */
+    .stProgress > div > div > div > div {
+        background-color: #1976d2;
     }
-    .sidebar-info {
-        padding: 1rem;
-        background: #f0f2f6;
+    
+    /* Download Button */
+    .stDownloadButton>button {
+        background-color: #43a047;
+        color: white;
         border-radius: 8px;
-        margin-bottom: 1rem;
+        border: none;
+        font-weight: 500;
+        padding: 0.6rem 1.2rem;
+        transition: all 0.2s ease;
+    }
+    
+    .stDownloadButton>button:hover {
+        background-color: #388e3c;
+        box-shadow: 0 2px 8px rgba(67, 160, 71, 0.3);
+    }
+    
+    /* Tooltips */
+    [data-testid="stTooltipIcon"] {
+        color: #1976d2;
+    }
+    
+    /* Code Blocks */
+    code {
+        background-color: #f5f5f5;
+        color: #1976d2;
+        padding: 0.2rem 0.4rem;
+        border-radius: 4px;
+        font-size: 0.9em;
+    }
+    
+    /* Cards Effect for Containers */
+    .element-container {
+        transition: transform 0.2s ease;
+    }
+    
+    /* Clean Professional Look */
+    p, li, span {
+        color: #1e1e1e;
+        line-height: 1.6;
+    }
+    
+    /* Subtle Shadows for Depth */
+    .stForm, .stFileUploader, [data-testid="stExpander"] {
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
     }
 </style>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
 
-# Initialize analyzer
-@st.cache_resource
-def get_analyzer():
-    return CodeAnalyzer(root_path=".")
+# Initialize session state
+if "analysis_complete" not in st.session_state:
+    st.session_state.analysis_complete = False
+if "results_dir" not in st.session_state:
+    st.session_state.results_dir = None
 
-analyzer = get_analyzer()
-
-# Sidebar
-with st.sidebar:
-    st.markdown("### 🔬 Prognosis Marker")
-    st.markdown("**Codebase Analysis Dashboard**")
-    st.markdown("---")
-
-    # Navigation
-    page = st.radio(
-        "Navigation",
-        ["📊 Dashboard", "📁 File Explorer", "🔍 Code Search", "🔧 Analysis Tools", "📜 Git History"],
-        label_visibility="collapsed"
-    )
-
-    st.markdown("---")
-
-    # Quick stats in sidebar
-    stats = analyzer.get_file_stats()
-    st.markdown('<div class="sidebar-info">', unsafe_allow_html=True)
-    st.markdown("**Quick Stats**")
-    st.metric("Total Files", stats['total_files'])
-    st.metric("Total Lines", f"{stats['total_lines']:,}")
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    # About
-    with st.expander("ℹ️ About"):
-        st.markdown("""
-        **Prognosis Marker** is a biostatistical research project
-        for deriving prognostic gene signatures through reproducible
-        machine learning workflows.
-
-        **Features:**
-        - Binary Classification
-        - Survival Analysis
-        - ROC Curve Generation
-        - Feature Selection
-        """)
+# Header
+st.markdown('<h1 class="main-header">🔬 Prognosis Marker</h1>', unsafe_allow_html=True)
+st.markdown(
+    '<p style="font-size: 1.1rem; color: #5f6368; margin-bottom: 2rem;">Biostatistical Gene Signature Analysis Platform</p>',
+    unsafe_allow_html=True,
+)
 
 # Main content
-if page == "📊 Dashboard":
-    st.markdown('<h1 class="main-header">Codebase Dashboard</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="sub-header">Comprehensive overview of your project</p>', unsafe_allow_html=True)
+col1, col2 = st.columns([2, 1])
 
-    # Get statistics
-    stats = analyzer.get_file_stats()
+with col1:
+    # Step 1: Upload data
+    st.markdown("## 📁 1. Data Upload")
 
-    # Top metrics
-    col1, col2, col3, col4 = st.columns(4)
+    # Example data load button
+    col_upload, col_example = st.columns([3, 1])
 
-    with col1:
-        st.metric(
-            label="📄 Total Files",
-            value=stats['total_files'],
-            delta=None
+    with col_upload:
+        uploaded_file = st.file_uploader(
+            "Upload your CSV file",
+            type=["csv"],
+            help="Upload the dataset for analysis",
         )
 
-    with col2:
-        st.metric(
-            label="📝 Total Lines",
-            value=f"{stats['total_lines']:,}",
-            delta=None
-        )
-
-    with col3:
-        languages = len([k for k, v in stats['by_language'].items() if v > 0])
-        st.metric(
-            label="💬 Languages",
-            value=languages,
-            delta=None
-        )
-
-    with col4:
-        r_files = stats['by_language'].get('R', 0)
-        st.metric(
-            label="📊 R Files",
-            value=r_files,
-            delta=None
-        )
-
-    st.markdown("---")
-
-    # Charts
-    col1, col2 = st.columns(2)
-
-    with col1:
-        st.subheader("📊 Files by Language")
-        if stats['by_language']:
-            df_lang = pd.DataFrame([
-                {'Language': k, 'Count': v}
-                for k, v in stats['by_language'].items()
-            ]).sort_values('Count', ascending=False)
-
-            fig = px.pie(
-                df_lang,
-                values='Count',
-                names='Language',
-                hole=0.4,
-                color_discrete_sequence=px.colors.sequential.Purples_r
-            )
-            fig.update_traces(textposition='inside', textinfo='percent+label')
-            fig.update_layout(
-                showlegend=True,
-                height=400,
-                margin=dict(t=20, b=20, l=20, r=20)
-            )
-            st.plotly_chart(fig, use_container_width=True)
-
-    with col2:
-        st.subheader("📈 Lines of Code by Language")
-        if stats['lines_by_language']:
-            df_lines = pd.DataFrame([
-                {'Language': k, 'Lines': v}
-                for k, v in stats['lines_by_language'].items()
-            ]).sort_values('Lines', ascending=False)
-
-            fig = px.bar(
-                df_lines,
-                x='Language',
-                y='Lines',
-                color='Lines',
-                color_continuous_scale='Purples'
-            )
-            fig.update_layout(
-                showlegend=False,
-                height=400,
-                margin=dict(t=20, b=20, l=20, r=20),
-                xaxis_title="",
-                yaxis_title="Lines of Code"
-            )
-            st.plotly_chart(fig, use_container_width=True)
-
-    st.markdown("---")
-
-    # File list
-    st.subheader("📂 File Overview")
-
-    if stats['file_list']:
-        df_files = pd.DataFrame(stats['file_list'])
-        df_files['size_kb'] = (df_files['size'] / 1024).round(2)
-
-        # Create interactive table
-        display_df = df_files[['path', 'language', 'lines', 'size_kb']].copy()
-        display_df.columns = ['File Path', 'Language', 'Lines', 'Size (KB)']
-
-        st.dataframe(
-            display_df,
-            use_container_width=True,
-            height=400,
-            hide_index=True
-        )
-
-        # Download button
-        csv = df_files.to_csv(index=False)
-        st.download_button(
-            label="📥 Download File List (CSV)",
-            data=csv,
-            file_name="file_list.csv",
-            mime="text/csv"
-        )
-
-    # Project structure
-    st.markdown("---")
-    st.subheader("🏗️ Project Structure")
-
-    col1, col2 = st.columns([1, 2])
-
-    with col1:
-        st.markdown("**Main Components:**")
-        st.markdown("""
-        - `Main_Binary.R` - Binary classification
-        - `Main_Survival.R` - Survival analysis
-        - `Binary_TrainAUC_StepwiseSelection.R` - Binary stepwise
-        - `Survival_TrainAUC_StepwiseSelection.R` - Survival stepwise
-        - `Example_data.csv` - Sample dataset
-        - `config/` - Configuration files
-        """)
-
-    with col2:
-        st.markdown("**Key Features:**")
-        st.markdown("""
-        - 🎯 AUC-driven forward/backward stepwise feature selection
-        - 📊 ROC curve generation and visualization
-        - 🔄 Repeated train/test splits with stratified resampling
-        - 📈 Publication-grade figure exports (PNG, TIFF, SVG)
-        - 📝 Comprehensive CSV logging
-        - ⚙️ YAML-driven configuration
-        """)
-
-elif page == "📁 File Explorer":
-    st.markdown('<h1 class="main-header">File Explorer</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="sub-header">Browse and view project files</p>', unsafe_allow_html=True)
-
-    # Get directory structure
-    structure = analyzer.get_directory_structure()
-
-    col1, col2 = st.columns([1, 2])
-
-    with col1:
-        st.subheader("📂 Directory Tree")
-
-        def display_tree(node, level=0):
-            """Recursively display directory tree"""
-            indent = "  " * level
-            icon = "📁" if node['type'] == 'directory' else "📄"
-
-            # Create expandable sections for directories
-            if node['type'] == 'directory':
-                with st.expander(f"{indent}{icon} {node['name']}", expanded=(level < 2)):
-                    for child in node.get('children', []):
-                        display_tree(child, level + 1)
+    with col_example:
+        st.markdown("<br>", unsafe_allow_html=True)  # Spacing
+        if st.button("📊 Load Example Data", key="load_example"):
+            # Load example data
+            example_path = Path("Example_data.csv")
+            if example_path.exists():
+                st.session_state.example_loaded = True
+                st.rerun()
             else:
-                if st.button(f"{indent}{icon} {node['name']}", key=node['path']):
-                    st.session_state['selected_file'] = node['path']
+                st.error("Example_data.csv file not found")
 
-        display_tree(structure)
+    # Handle example data
+    if "example_loaded" in st.session_state and st.session_state.example_loaded:
+        example_path = Path("Example_data.csv")
+        if example_path.exists():
+            uploaded_file = example_path
+            st.info("✓ Example data loaded successfully")
 
-    with col2:
-        st.subheader("📄 File Viewer")
+    if uploaded_file:
+        # Preview data
+        df = pd.read_csv(uploaded_file)
+        file_name = (
+            uploaded_file.name if hasattr(uploaded_file, "name") else str(uploaded_file)
+        )
+        st.success(f"✓ File loaded: {file_name}")
 
-        # File selection
-        stats = analyzer.get_file_stats()
-        file_paths = [f['path'] for f in stats['file_list']]
+        with st.expander("📊 Data Preview"):
+            st.dataframe(df.head(10), use_container_width=True)
 
-        selected_file = st.selectbox(
-            "Select a file to view",
-            [''] + file_paths,
-            index=0 if 'selected_file' not in st.session_state else file_paths.index(st.session_state.get('selected_file', '')) + 1
+            col_a, col_b, col_c = st.columns(3)
+            with col_a:
+                st.metric("Rows", df.shape[0])
+            with col_b:
+                st.metric("Columns", df.shape[1])
+            with col_c:
+                # Handle file size for both uploaded and example files
+                if hasattr(uploaded_file, "size"):
+                    file_size = uploaded_file.size / 1024
+                else:
+                    file_size = Path(uploaded_file).stat().st_size / 1024
+                st.metric("Size", f"{file_size:.1f} KB")
+
+        st.markdown("---")
+
+        # Step 2: Analysis type
+        st.markdown("## 🎯 2. Analysis Type")
+        analysis_type = st.radio(
+            "Select analysis type",
+            ["Binary Classification", "Survival Analysis"],
+            horizontal=True,
         )
 
-        if selected_file:
-            file_path = Path(selected_file)
+        st.markdown("---")
 
-            # File info
-            st.markdown(f"**File:** `{selected_file}`")
+        # Step 3: Configuration
+        st.markdown("## ⚙️ 3. Configuration")
 
-            try:
-                file_size = file_path.stat().st_size
-                st.markdown(f"**Size:** {file_size / 1024:.2f} KB")
+        columns = df.columns.tolist()
 
-                # Read and display file content
-                with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                    content = f.read()
+        with st.form("analysis_config"):
+            col_left, col_right = st.columns(2)
 
-                # Syntax highlighting
-                try:
-                    lexer = guess_lexer_for_filename(file_path, content)
-                    formatter = HtmlFormatter(style='monokai', full=True, linenos=True)
-                    highlighted = highlight(content, lexer, formatter)
-
-                    st.markdown('<div class="code-viewer">', unsafe_allow_html=True)
-                    st.markdown(highlighted, unsafe_allow_html=True)
-                    st.markdown('</div>', unsafe_allow_html=True)
-
-                except Exception:
-                    # Fallback to plain text
-                    st.code(content, language=None)
-
-                # Download button
-                st.download_button(
-                    label="📥 Download File",
-                    data=content,
-                    file_name=file_path.name,
-                    mime="text/plain"
+            with col_left:
+                sample_id = st.selectbox(
+                    "Sample ID Column", columns, index=0 if "sample" in columns else 0
                 )
 
-                # Analyze R files
-                if file_path.suffix.lower() in ['.r']:
-                    st.markdown("---")
-                    st.subheader("🔍 R File Analysis")
+                if analysis_type == "Binary Classification":
+                    outcome = st.selectbox("Outcome Column", columns)
+                    time_var = st.selectbox(
+                        "Time Column (Optional)", ["None"] + columns
+                    )
+                else:
+                    time_var = st.selectbox("Time Column", columns)
+                    outcome = st.selectbox("Event Column", columns)
+                    horizon = st.number_input(
+                        "Horizon (years)", value=5, min_value=1, max_value=20
+                    )
 
-                    analysis = analyzer.analyze_r_file(str(file_path))
+            with col_right:
+                split_prop = st.slider("Train/Test Split Ratio", 0.5, 0.9, 0.7, 0.05)
+                num_seed = st.number_input(
+                    "Number of Iterations",
+                    value=100,
+                    min_value=10,
+                    max_value=1000,
+                    step=10,
+                )
+                output_dir = st.text_input(
+                    "Output Directory",
+                    value=f"results/{analysis_type.lower().split()[0]}",
+                )
 
-                    col1, col2, col3, col4 = st.columns(4)
-                    with col1:
-                        st.metric("Functions", analysis.get('function_count', 0))
-                    with col2:
-                        st.metric("Libraries", analysis.get('library_count', 0))
-                    with col3:
-                        st.metric("Code Lines", analysis.get('code_lines', 0))
-                    with col4:
-                        st.metric("Comments", analysis.get('comment_lines', 0))
+            submitted = st.form_submit_button("🚀 Start Analysis")
 
-                    if analysis.get('functions'):
-                        st.markdown("**Functions defined:**")
-                        for func in analysis['functions']:
-                            st.markdown(f"- `{func}()`")
+            if submitted:
+                # Save uploaded file temporarily
+                temp_dir = tempfile.mkdtemp()
+                data_path = Path(temp_dir) / uploaded_file.name
+                df.to_csv(data_path, index=False)
 
-                    if analysis.get('libraries'):
-                        st.markdown("**Libraries imported:**")
-                        for lib in analysis['libraries']:
-                            st.markdown(f"- `{lib}`")
+                # Create config
+                config = {"workdir": ".", "data_file": str(data_path)}
 
-            except Exception as e:
-                st.error(f"Error reading file: {e}")
+                if analysis_type == "Binary Classification":
+                    config["binary"] = {
+                        "data_file": str(data_path),
+                        "sample_id": sample_id,
+                        "outcome": outcome,
+                        "time_variable": None if time_var == "None" else time_var,
+                        "split_prop": split_prop,
+                        "num_seed": num_seed,
+                        "output_dir": output_dir,
+                    }
+                else:
+                    config["survival"] = {
+                        "data_file": str(data_path),
+                        "sample_id": sample_id,
+                        "time_variable": time_var,
+                        "event": outcome,
+                        "horizon": horizon,
+                        "split_prop": split_prop,
+                        "num_seed": num_seed,
+                        "output_dir": output_dir,
+                    }
 
-elif page == "🔍 Code Search":
-    st.markdown('<h1 class="main-header">Code Search</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="sub-header">Search across all project files</p>', unsafe_allow_html=True)
+                # Save config
+                config_path = Path(temp_dir) / "config.yaml"
+                with open(config_path, "w") as f:
+                    yaml.dump(config, f)
 
-    # Search input
-    col1, col2 = st.columns([3, 1])
-
-    with col1:
-        search_query = st.text_input(
-            "🔍 Search pattern (regex supported)",
-            placeholder="Enter search term or regex pattern..."
-        )
-
-    with col2:
-        file_types = st.multiselect(
-            "File types",
-            ['.R', '.r', '.py', '.yaml', '.yml', '.md', '.csv'],
-            default=['.R', '.r']
-        )
-
-    if search_query:
-        with st.spinner("Searching..."):
-            results = analyzer.search_in_files(search_query, file_types)
-
-        st.markdown(f"**Found {len(results)} results**")
-
-        if results:
-            # Group by file
-            df_results = pd.DataFrame(results)
-
-            # Display results by file
-            for file_path in df_results['file'].unique():
-                file_results = df_results[df_results['file'] == file_path]
-
-                with st.expander(f"📄 {file_path} ({len(file_results)} matches)"):
-                    for _, row in file_results.iterrows():
-                        st.markdown(f"**Line {row['line_number']}:**")
-                        st.code(row['line'], language=row['language'].lower())
-
-            # Download results
-            csv = df_results.to_csv(index=False)
-            st.download_button(
-                label="📥 Download Search Results (CSV)",
-                data=csv,
-                file_name="search_results.csv",
-                mime="text/csv"
-            )
-        else:
-            st.info("No results found")
-
-elif page == "🔧 Analysis Tools":
-    st.markdown('<h1 class="main-header">Analysis Tools</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="sub-header">Deep dive into code structure and dependencies</p>', unsafe_allow_html=True)
-
-    tab1, tab2, tab3 = st.tabs(["📊 R Analysis", "⚙️ Configuration", "📦 Dependencies"])
-
-    with tab1:
-        st.subheader("R File Analysis")
-
-        r_files = [f['path'] for f in analyzer.get_file_stats()['file_list'] if f['extension'].lower() in ['.r']]
-
-        if r_files:
-            selected_r_file = st.selectbox("Select R file", r_files)
-
-            if selected_r_file:
-                analysis = analyzer.analyze_r_file(selected_r_file)
-
-                col1, col2 = st.columns(2)
-
-                with col1:
-                    st.markdown("### 📋 Functions")
-                    if analysis.get('functions'):
-                        for func in analysis['functions']:
-                            st.markdown(f"- `{func}()`")
-                    else:
-                        st.info("No functions found")
-
-                with col2:
-                    st.markdown("### 📚 Libraries")
-                    if analysis.get('libraries'):
-                        for lib in analysis['libraries']:
-                            st.markdown(f"- `{lib}`")
-                    else:
-                        st.info("No libraries imported")
-
-                # Stats
+                # Run analysis
                 st.markdown("---")
-                col1, col2, col3, col4 = st.columns(4)
+                st.markdown("## 🔄 Running Analysis...")
 
-                with col1:
-                    st.metric("Total Lines", analysis.get('total_lines', 0))
-                with col2:
-                    st.metric("Code Lines", analysis.get('code_lines', 0))
-                with col3:
-                    st.metric("Comment Lines", analysis.get('comment_lines', 0))
-                with col4:
-                    comment_ratio = (analysis.get('comment_lines', 0) / max(analysis.get('total_lines', 1), 1)) * 100
-                    st.metric("Comment %", f"{comment_ratio:.1f}%")
+                progress_bar = st.progress(0)
+                status_text = st.empty()
 
-        else:
-            st.info("No R files found in the project")
+                try:
+                    # Determine which script to run
+                    script_type = (
+                        "binary"
+                        if analysis_type == "Binary Classification"
+                        else "survival"
+                    )
 
-    with tab2:
-        st.subheader("Configuration Files")
+                    status_text.text(
+                        f"Running R script... (up to {num_seed} iterations)"
+                    )
+                    progress_bar.progress(30)
 
-        # Check for config files
-        config_files = [f['path'] for f in analyzer.get_file_stats()['file_list']
-                       if f['extension'].lower() in ['.yaml', '.yml', '.toml']]
+                    # Run pixi command
+                    result = subprocess.run(
+                        [
+                            "pixi",
+                            "run",
+                            script_type,
+                            "--",
+                            "--config",
+                            str(config_path),
+                        ],
+                        capture_output=True,
+                        text=True,
+                        timeout=600,  # 10 minutes timeout
+                    )
 
-        if config_files:
-            selected_config = st.selectbox("Select configuration file", config_files)
+                    progress_bar.progress(90)
 
-            if selected_config:
-                if selected_config.endswith('.yaml') or selected_config.endswith('.yml'):
-                    analysis = analyzer.analyze_yaml_file(selected_config)
+                    if result.returncode == 0:
+                        progress_bar.progress(100)
+                        status_text.text("✓ Analysis completed!")
 
-                    if 'error' not in analysis:
-                        st.markdown(f"**Total keys:** {analysis.get('keys', 0)}")
+                        st.session_state.analysis_complete = True
+                        st.session_state.results_dir = output_dir
 
-                        if analysis.get('top_level_keys'):
-                            st.markdown("**Top-level keys:**")
-                            for key in analysis['top_level_keys']:
-                                st.markdown(f"- `{key}`")
-
-                        st.markdown("---")
-                        st.markdown("**Configuration Structure:**")
-                        st.json(analysis.get('structure', {}))
+                        time.sleep(1)
+                        st.rerun()
                     else:
-                        st.error(f"Error analyzing file: {analysis['error']}")
+                        st.error("❌ Error occurred during analysis")
+                        st.code(result.stderr, language="text")
 
-                with open(selected_config, 'r') as f:
-                    st.code(f.read(), language='yaml')
-        else:
-            st.info("No configuration files found")
+                except subprocess.TimeoutExpired:
+                    st.error("❌ Analysis timeout (10 minute limit)")
+                except Exception as e:
+                    st.error(f"❌ Error: {str(e)}")
 
-    with tab3:
-        st.subheader("Project Dependencies")
+with col2:
+    st.markdown("## 💡 Help")
 
-        # Check for requirements.txt, pixi.toml, etc.
-        dep_files = {
-            'requirements.txt': 'Python',
-            'pixi.toml': 'Pixi',
-            'package.json': 'Node.js'
-        }
+    st.info(
+        """
+    **🚀 Quick Start**
+    
+    1. Click **📊 Load Example Data** for a demo
+    2. Or **upload your CSV file**
+    3. Select analysis type
+    4. Configure column names
+    5. Start analysis!
+    
+    **📋 Data Format**
+    
+    **Binary Analysis:**
+    - Sample ID (identifier)
+    - Outcome (0/1: result)
+    - Time (optional)
+    - Additional feature columns
+    
+    **Survival Analysis:**
+    - Sample ID (identifier)
+    - Time (in years)
+    - Event (0/1: event occurred)
+    - Additional feature columns
+    """
+    )
 
-        found_deps = []
-        for dep_file, dep_type in dep_files.items():
-            if Path(dep_file).exists():
-                found_deps.append((dep_file, dep_type))
+    with st.expander("⚙️ Parameter Details"):
+        st.markdown(
+            """
+        **Split Ratio**
+        - Proportion for training set (0.7 = 70%)
+        - Higher ratio = more training data
+        
+        **Number of Iterations**
+        - Train/test split repetitions
+        - More iterations = more stable, but longer runtime
+        
+        **Horizon (Survival only)**
+        - Evaluation timepoint for survival analysis (years)
+        - Example: 5-year survival rate
+        """
+        )
 
-        if found_deps:
-            for dep_file, dep_type in found_deps:
-                st.markdown(f"### {dep_type} Dependencies ({dep_file})")
+    with st.expander("📊 Example Data Info"):
+        st.markdown(
+            """
+        **Example_data.csv**
+        
+        Sample dataset ready for immediate analysis.
+        
+        - Supports both Binary & Survival analysis
+        - 145 samples
+        - Multiple gene markers included
+        """
+        )
 
-                with open(dep_file, 'r') as f:
-                    content = f.read()
-                    st.code(content, language='toml' if dep_file.endswith('.toml') else 'text')
-        else:
-            st.info("No dependency files found")
+# Results section
+if st.session_state.analysis_complete and st.session_state.results_dir:
+    st.markdown("---")
+    st.markdown("## 📊 Analysis Results")
 
-        # R dependencies from all files
-        st.markdown("---")
-        st.subheader("R Libraries Used")
+    results_dir = Path(st.session_state.results_dir)
 
-        all_libraries = set()
-        r_files = [f['path'] for f in analyzer.get_file_stats()['file_list'] if f['extension'].lower() in ['.r']]
-
-        for r_file in r_files:
-            analysis = analyzer.analyze_r_file(r_file)
-            all_libraries.update(analysis.get('libraries', []))
-
-        if all_libraries:
-            st.markdown(f"**Total unique libraries:** {len(all_libraries)}")
-
-            cols = st.columns(3)
-            for idx, lib in enumerate(sorted(all_libraries)):
-                with cols[idx % 3]:
-                    st.markdown(f"- `{lib}`")
-        else:
-            st.info("No R libraries found")
-
-elif page == "📜 Git History":
-    st.markdown('<h1 class="main-header">Git History</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="sub-header">Repository information and commit history</p>', unsafe_allow_html=True)
-
-    git_info = analyzer.get_git_info()
-
-    if 'error' not in git_info:
-        # Current branch info
-        col1, col2, col3 = st.columns(3)
-
-        with col1:
-            st.metric("Current Branch", git_info['current_branch'])
-
-        with col2:
-            st.metric("Total Branches", len(git_info['branches']))
-
-        with col3:
-            status = "Clean ✅" if not git_info['is_dirty'] else "Modified ⚠️"
-            st.metric("Working Tree", status)
-
-        st.markdown("---")
-
-        # Branches
+    if results_dir.exists():
+        # Display results
         col1, col2 = st.columns(2)
 
         with col1:
-            st.subheader("🌿 Branches")
-            for branch in git_info['branches']:
-                icon = "➡️" if branch == git_info['current_branch'] else "  "
-                st.markdown(f"{icon} `{branch}`")
+            # ROC Curve
+            roc_png = results_dir / "ROCcurve.png"
+            if roc_png.exists():
+                st.image(str(roc_png), caption="ROC Curve", use_container_width=True)
 
         with col2:
-            st.subheader("📊 Repository Stats")
-            st.markdown(f"**Total commits shown:** {len(git_info['recent_commits'])}")
+            # Variable Importance
+            var_imp_png = results_dir / "Variable_Importance.png"
+            if var_imp_png.exists():
+                st.image(
+                    str(var_imp_png),
+                    caption="Variable Importance",
+                    use_container_width=True,
+                )
 
-        # Commit history
-        st.markdown("---")
-        st.subheader("📜 Recent Commits")
+        # AUC results
+        auc_csv = results_dir / "auc_iterations.csv"
+        if auc_csv.exists():
+            st.markdown("### 📈 AUC Results")
+            auc_df = pd.read_csv(auc_csv)
+            st.dataframe(auc_df, use_container_width=True, hide_index=True)
 
-        if git_info['recent_commits']:
-            for commit in git_info['recent_commits']:
-                with st.expander(f"🔹 {commit['hash']} - {commit['message'][:60]}..."):
-                    st.markdown(f"**Author:** {commit['author']}")
-                    st.markdown(f"**Date:** {commit['date']}")
-                    st.markdown(f"**Message:**\n```\n{commit['message']}\n```")
+        # Download section
+        st.markdown("### 📥 Download Results")
 
-            # Create timeline visualization
-            df_commits = pd.DataFrame(git_info['recent_commits'])
-            df_commits['date'] = pd.to_datetime(df_commits['date'])
+        download_col1, download_col2, download_col3 = st.columns(3)
 
-            fig = go.Figure()
+        with download_col1:
+            if roc_png.exists():
+                with open(roc_png, "rb") as f:
+                    st.download_button(
+                        "📊 ROC Curve (PNG)",
+                        f,
+                        file_name="ROCcurve.png",
+                        mime="image/png",
+                    )
 
-            fig.add_trace(go.Scatter(
-                x=df_commits['date'],
-                y=[1] * len(df_commits),
-                mode='markers+text',
-                marker=dict(size=15, color='#667eea'),
-                text=df_commits['hash'],
-                textposition='top center',
-                hovertemplate='<b>%{text}</b><br>%{x}<extra></extra>',
-                showlegend=False
-            ))
+        with download_col2:
+            if var_imp_png.exists():
+                with open(var_imp_png, "rb") as f:
+                    st.download_button(
+                        "📊 Importance (PNG)",
+                        f,
+                        file_name="Variable_Importance.png",
+                        mime="image/png",
+                    )
 
-            fig.update_layout(
-                title="Commit Timeline",
-                xaxis_title="Date",
-                yaxis_visible=False,
-                height=200,
-                margin=dict(t=40, b=20, l=20, r=20)
-            )
+        with download_col3:
+            if auc_csv.exists():
+                with open(auc_csv, "rb") as f:
+                    st.download_button(
+                        "📄 AUC Results (CSV)",
+                        f,
+                        file_name="auc_iterations.csv",
+                        mime="text/csv",
+                    )
 
-            st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.info("No commits found")
+        # New analysis button
+        if st.button("🔄 Start New Analysis"):
+            st.session_state.analysis_complete = False
+            st.session_state.results_dir = None
+            if "example_loaded" in st.session_state:
+                del st.session_state.example_loaded
+            st.rerun()
     else:
-        st.warning(f"Git information not available: {git_info['error']}")
+        st.warning("Results directory not found.")
 
 # Footer
 st.markdown("---")
 st.markdown(
     """
-    <div style='text-align: center; color: #666; padding: 2rem;'>
-        <p>Prognosis Marker Codebase Analyzer | Built with Streamlit</p>
-        <p style='font-size: 0.9rem;'>🔬 Biostatistical Research Tool for Prognostic Gene Signatures</p>
+    <div style='text-align: center; padding: 2rem 0 1rem 0;'>
+        <p style='font-size: 0.9rem; color: #5f6368; margin-bottom: 0.3rem;'>
+            <strong>Prognosis Marker</strong> — Academic Bioinformatics Research Tool
+        </p>
+        <p style='font-size: 0.85rem; color: #9e9e9e;'>
+            Powered by R, Python & Streamlit | © 2025
+        </p>
     </div>
     """,
-    unsafe_allow_html=True
+    unsafe_allow_html=True,
 )

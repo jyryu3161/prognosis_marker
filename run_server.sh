@@ -63,6 +63,11 @@ print_banner
 # ============================================================================
 print_header "Checking requirements"
 
+# Add pixi to PATH if it exists in the default location
+if [ -f "$HOME/.pixi/bin/pixi" ]; then
+    export PATH="$HOME/.pixi/bin:$PATH"
+fi
+
 if ! command -v pixi &> /dev/null; then
     print_error "pixi is not installed or not in PATH"
     print_info ""
@@ -71,6 +76,9 @@ if ! command -v pixi &> /dev/null; then
     print_info ""
     print_info "Or run the full installation script:"
     print_info "  ./install.sh"
+    print_info ""
+    print_info "After installation, restart your shell or run:"
+    print_info "  export PATH=\"\$HOME/.pixi/bin:\$PATH\""
     exit 1
 fi
 
