@@ -8,6 +8,9 @@ suppressPackageStartupMessages({
   library(yaml)
 })
 
+# Source the helper function file
+source("Binary_TrainAUC_StepwiseSelection.R")
+
 parse_config_path <- function(args) {
   if (!length(args)) {
     return(file.path("config", "example_analysis.yaml"))
@@ -17,8 +20,8 @@ parse_config_path <- function(args) {
     return(sub("^--config=", "", args[eq_idx[1]]))
   }
   flag_idx <- which(args %in% c("--config", "-c"))
-  if (length(flag_idx) && flag_idx < length(args)) {
-    return(args[flag_idx + 1])
+  if (length(flag_idx) > 0 && flag_idx[1] < length(args)) {
+    return(args[flag_idx[1] + 1])
   }
   return(args[1])
 }
@@ -36,7 +39,11 @@ if (is.null(config$binary)) {
 }
 
 workdir <- if (!is.null(config$workdir)) config$workdir else getwd()
-if (!dir.exists(workdir)) {
+# Handle "." or NA from YAML parsing
+if (is.na(workdir) || identical(workdir, ".")) {
+  workdir <- getwd()
+}
+if (!is.character(workdir) || !dir.exists(workdir)) {
   stop("Configured working directory does not exist: ", workdir)
 }
 setwd(workdir)
@@ -64,7 +71,7 @@ non_feature_cols <- unique(c(SampleID, Outcome, time_variable))
 non_feature_cols <- non_feature_cols[non_feature_cols %in% colnames(dat)]
 
 totvar <- if (!is.null(binary_cfg$features)) {
-  binary_cfg$features
+  as.character(unlist(binary_cfg$features))
 } else {
   setdiff(colnames(dat), non_feature_cols)
 }
@@ -73,15 +80,38 @@ numSeed <- if (!is.null(binary_cfg$num_seed)) as.integer(binary_cfg$num_seed) el
 SplitProp <- if (!is.null(binary_cfg$split_prop)) as.numeric(binary_cfg$split_prop) else 0.7
 outdir <- if (!is.null(binary_cfg$output_dir)) binary_cfg$output_dir else "StepBin"
 excvar <- binary_cfg$exclude
-if (is.null(excvar)) excvar <- character(0)
-fixvar <- binary_cfg$include
-if (is.null(fixvar)) fixvar <- character(0)
+if (is.null(excvar) || length(excvar) == 0) {
+  excvar <- character(0)
+} else {
+  excvar <- as.character(unlist(excvar))
+  # Remove NA and empty strings
+  excvar <- excvar[!is.na(excvar) & nchar(excvar) > 0]
+}
 
-Result <- BinTrainAUCStepwise(totvar, dat, fixvar, excvar, numSeed, SplitProp, outdir)
+fixvar <- binary_cfg$include
+if (is.null(fixvar) || length(fixvar) == 0) {
+  fixvar <- character(0)
+} else {
+  fixvar <- as.character(unlist(fixvar))
+  # Remove NA and empty strings
+  fixvar <- fixvar[!is.na(fixvar) & nchar(fixvar) > 0]
+}
+
+# Output initial progress to stderr (unbuffered)
+cat("PROGRESS_START:", numSeed, "\n", sep = "", file = stderr())
+cat("STEPWISE_START\n", sep = "", file = stderr())
+
+Result <- BinTrainAUCStepwise(totvar, dat, fixvar, excvar, numSeed, SplitProp, outdir, Outcome)
+
+cat("STEPWISE_DONE\n", sep = "", file = stderr())
 
 FinalRes <- NULL
 trROCobjList <- tsROCobjList <- vector("list", numSeed)
+
 for (s in seq_len(numSeed)) {
+  # Output progress to stderr (unbuffered)
+  cat("PROGRESS:", s, "\n", sep = "", file = stderr())
+
   set.seed(s)
   repeat {
     trIdx <- createDataPartition(dat[, Outcome], p = SplitProp, list = FALSE, times = 1)

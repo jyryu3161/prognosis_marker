@@ -18,16 +18,30 @@ Binforward_step <- function(dat, candid, fixvar, numSeed,SplitProp){
       if (min(n_tr_0, n_tr_1, n_ts_0, n_ts_1) >= 2) break
     }
     for (g in setdiff(candid,fixvar)){
-      f=as.formula(paste('Outcome ~ ',paste(fixvar,collapse = ' + '),' + ',g,collapse = ''))
-      trdat1 <- trdat[complete.cases(trdat[,c('Outcome',setdiff(c(fixvar,g),''))]),c('Outcome',setdiff(c(fixvar,g),''))]
-      tsdat1 <- tsdat[complete.cases(tsdat[,c('Outcome',setdiff(c(fixvar,g),''))]),c('Outcome',setdiff(c(fixvar,g),''))]
+      # Build formula based on whether fixvar is empty
+      # Remove NA and empty strings from fixvar
+      valid_fixvar <- fixvar[!is.na(fixvar) & nchar(fixvar) > 0]
+
+      if (length(valid_fixvar) == 0) {
+        formula_str <- paste('Outcome ~', g)
+        vars_to_use <- g
+      } else {
+        formula_str <- paste('Outcome ~', paste(valid_fixvar, collapse = ' + '), '+', g)
+        vars_to_use <- c(valid_fixvar, g)
+      }
+      f <- as.formula(formula_str)
+
+      # Select complete cases with proper column names
+      cols_needed <- c('Outcome', vars_to_use)
+      trdat1 <- trdat[complete.cases(trdat[, cols_needed]), cols_needed]
+      tsdat1 <- tsdat[complete.cases(tsdat[, cols_needed]), cols_needed]
       Logitres<-glm(f, data = trdat1, family = "binomial")
       
       lptr <- predict(Logitres,trdat1, type="response")
       trauc <- performance(prediction(lptr,trdat1[,'Outcome']),"auc")@y.values[[1]][1]
       lpts <- predict(Logitres,tsdat1)
       tsauc <- performance(prediction(lpts,tsdat1[,'Outcome']),"auc")@y.values[[1]][1]
-      forward_ls <- rbind(forward_ls,c(s,paste(c(fixvar,g),collapse = ' + '),trauc,tsauc))
+      forward_ls <- rbind(forward_ls,c(s,paste(vars_to_use, collapse = ' + '),trauc,tsauc))
     }
   }
   forward_ls1 <- data.frame(forward_ls)
@@ -57,15 +71,37 @@ Binbackward_step <- function(dat, backcandid, fixvar, numSeed, SplitProp){
       if (min(n_tr_0, n_tr_1, n_ts_0, n_ts_1) >= 2) break
     }
     for (g in backcandid){
-      f=as.formula(paste('Outcome ~ ',paste(setdiff(fixvar,g),collapse = ' + '),collapse = ''))
-      trdat1 <- trdat[complete.cases(trdat[,c('Outcome',setdiff(fixvar,g))]),]
-      tsdat1 <- tsdat[complete.cases(tsdat[,c('Outcome',setdiff(fixvar,g))]),]
+      # Remove g from fixvar
+      vars_remaining <- setdiff(fixvar, g)
+
+      # Remove NA and empty strings
+      valid_vars_remaining <- vars_remaining[!is.na(vars_remaining) & nchar(vars_remaining) > 0]
+
+      # Build formula based on remaining variables
+      if (length(valid_vars_remaining) == 0) {
+        formula_str <- 'Outcome ~ 1'  # Intercept only
+        cols_needed <- 'Outcome'
+      } else {
+        formula_str <- paste('Outcome ~', paste(valid_vars_remaining, collapse = ' + '))
+        cols_needed <- c('Outcome', valid_vars_remaining)
+      }
+      f <- as.formula(formula_str)
+
+      trdat1 <- trdat[complete.cases(trdat[, cols_needed]), ]
+      tsdat1 <- tsdat[complete.cases(tsdat[, cols_needed]), ]
       Logitres<-glm(f, data = trdat1, family = "binomial")
       lptr <- predict(Logitres,trdat1, type="response")
       trauc <- performance(prediction(lptr,trdat1[,'Outcome']),"auc")@y.values[[1]][1]
       lpts <- predict(Logitres,tsdat1)
       tsauc <- performance(prediction(lpts,tsdat1[,'Outcome']),"auc")@y.values[[1]][1]
-      backward_ls <- rbind(backward_ls,c(s,paste(setdiff(fixvar,g),collapse = ' + '),trauc,tsauc))
+
+      # Use appropriate variable list for backward_ls
+      if (length(valid_vars_remaining) == 0) {
+        var_str <- "1"  # Intercept only
+      } else {
+        var_str <- paste(valid_vars_remaining, collapse = ' + ')
+      }
+      backward_ls <- rbind(backward_ls,c(s, var_str, trauc, tsauc))
     }
   }
   backward_ls1 <- data.frame(backward_ls)
@@ -78,17 +114,35 @@ Binbackward_step <- function(dat, backcandid, fixvar, numSeed, SplitProp){
   return(AUCsumm)
 }
 
-BinTrainAUCStepwise <- function(totvar,dat,fixvar,excvar,numSeed,SplitProp,outdir){
-  colnames(dat) <- gsub(Outcome,"Outcome",colnames(dat))
+BinTrainAUCStepwise <- function(totvar,dat,fixvar,excvar,numSeed,SplitProp,outdir,Outcome){
+  # Outcome 변수가 문자열인지 확인하고 해당 열의 이름을 "Outcome"으로 변경
+  original_outcome_colname <- as.character(Outcome)
+  if (original_outcome_colname %in% colnames(dat)) {
+    colnames(dat)[colnames(dat) == original_outcome_colname] <- "Outcome"
+  } else {
+    stop(paste0("Outcome column '", original_outcome_colname, "' not found in data."))
+  }
+
+  cat("STEPWISE_LOG:Starting stepwise selection with", length(totvar), "variables\n", sep = "", file = stderr())
+
   imtres <- NULL
+  step_count <- 0
   while (length(setdiff(fixvar,excvar))<length(totvar)){
+    step_count <- step_count + 1
     candid <- setdiff(totvar,c(fixvar,excvar))
-    
+
+    cat("STEPWISE_LOG:Step", step_count, "- Evaluating", length(candid), "candidate variables\n", sep = " ", file = stderr())
+
     ##### Forward step
+    cat("STEPWISE_LOG:Running forward step with", length(candid), "candidates x", numSeed, "iterations =", length(candid) * numSeed, "models\n", sep = " ", file = stderr())
     forward_ls <- Binforward_step(dat, candid, fixvar, numSeed,SplitProp)
+    cat("STEPWISE_LOG:Forward step completed\n", sep = "", file = stderr())
     forward.trauc1<-max(as.numeric(forward_ls[,2]))
     forward.var1 <- forward_ls[which.max(as.numeric(forward_ls[,2])),1];forward.tsauc1 <-forward_ls[which.max(as.numeric(forward_ls[,2])),3]
     forward.newstep <-matrix(c(forward.var1,forward.trauc1,forward.tsauc1),nrow=1)
+
+    cat("STEPWISE_LOG:Best variable combination:", forward.var1, "(trainAUC:", forward.trauc1, ")\n", sep = " ", file = stderr())
+
     if (length(setdiff(gsub(" ","",strsplit(forward.var1,"\\+")[[1]]),""))==1){
       if (!dir.exists(outdir)) {
         dir.create(outdir, recursive = TRUE)
@@ -98,6 +152,7 @@ BinTrainAUCStepwise <- function(totvar,dat,fixvar,excvar,numSeed,SplitProp,outdi
       eval(parse(text = paste("write.csv(forward.newstep,'./",outdir,"/Intermediate_Forward",nrow(imtres),".csv',row.names = F)",sep = "")))
       fixvar <- gsub(" ","",strsplit(forward.var1,'\\+')[[1]][2])
       forward.old <- forward.newstep
+      cat("STEPWISE_LOG:First variable selected:", fixvar, "\n", sep = " ", file = stderr())
     } else{
       forward.old <- imtres[nrow(imtres),]
       if (as.numeric(forward.newstep[2]) > (as.numeric(forward.old[2]) + 0.005)){
@@ -105,14 +160,18 @@ BinTrainAUCStepwise <- function(totvar,dat,fixvar,excvar,numSeed,SplitProp,outdi
         imtres <- rbind(imtres, forward.newstep)
         colnames(forward.newstep)<-c('Variable','trainAUC','testAUC')
         eval(parse(text = paste("write.csv(forward.newstep,'./",outdir,"/Intermediate_Forward",nrow(imtres),".csv',row.names = F)",sep = "")))
-        fixvar <- append(fixvar,gsub(' ','',strsplit(forward.var1,'\\+')[[1]])[length(gsub(' ','',strsplit(forward.var1,'\\+')[[1]]))])
+        new_var <- gsub(' ','',strsplit(forward.var1,'\\+')[[1]])[length(gsub(' ','',strsplit(forward.var1,'\\+')[[1]]))]
+        fixvar <- append(fixvar, new_var)
         forward.old <- forward.newstep
-        
+        cat("STEPWISE_LOG:Added variable:", new_var, "- Total selected:", length(fixvar), "\n", sep = " ", file = stderr())
+
         if (nrow(imtres)>2){
-          
+
           ##### Backward step
+          cat("STEPWISE_LOG:Running backward step to check if any variable should be removed\n", sep = "", file = stderr())
           backcandid<-fixvar[c(1:(length(fixvar)-2))]
           backward_ls<-Binbackward_step(dat, backcandid, fixvar, numSeed, SplitProp)
+          cat("STEPWISE_LOG:Backward step completed\n", sep = "", file = stderr())
           backward.trauc1<-max(as.numeric(backward_ls[,2]))
           backward.var1 <- backward_ls[which.max(as.numeric(backward_ls[,2])),1];backward.tsauc1 <-backward_ls[which.max(as.numeric(backward_ls[,2])),3]
           backward.newstep <-matrix(c(backward.var1,backward.trauc1,backward.tsauc1),nrow=1)
@@ -122,10 +181,13 @@ BinTrainAUCStepwise <- function(totvar,dat,fixvar,excvar,numSeed,SplitProp,outdi
             eval(parse(text = paste("write.csv(backward.newstep,'./",outdir,"/Intermediate_Backward",nrow(imtres),".csv',row.names = F)",sep = "")))
             fixvar <- gsub(' ','',strsplit(backward_ls[which.max(as.numeric(backward_ls[,2])),1],'\\+')[[1]])
             forward.old <- backward.trauc1
+            cat("STEPWISE_LOG:Backward step improved model - updated variables\n", sep = "", file = stderr())
+          } else {
+            cat("STEPWISE_LOG:Backward step did not improve model - keeping current variables\n", sep = "", file = stderr())
           }
         }
       } else{
-        
+        cat("STEPWISE_LOG:No improvement from adding more variables - stopping stepwise selection\n", sep = "", file = stderr())
         mat<-matrix(imtres[nrow(imtres),],nrow=1)
         colnames(mat)<-c('Variable','trainAUC','testAUC')
         colnames(imtres)<-c('Variable','trainAUC','testAUC')
@@ -135,6 +197,7 @@ BinTrainAUCStepwise <- function(totvar,dat,fixvar,excvar,numSeed,SplitProp,outdi
       }
     }
   }
+  cat("STEPWISE_LOG:Stepwise selection completed - Final variables:", nrow(imtres), "\n", sep = " ", file = stderr())
   mat<-matrix(imtres[nrow(imtres),],nrow=1)
   colnames(mat)<-c('Variable','trainAUC','testAUC')
   colnames(imtres)<-c('Variable','trainAUC','testAUC')

@@ -9,6 +9,9 @@ suppressPackageStartupMessages({
   library(yaml)
 })
 
+# Source the helper function file
+source("Survival_TrainAUC_StepwiseSelection.R")
+
 parse_config_path <- function(args) {
   if (!length(args)) {
     return(file.path("config", "example_analysis.yaml"))
@@ -18,8 +21,8 @@ parse_config_path <- function(args) {
     return(sub("^--config=", "", args[eq_idx[1]]))
   }
   flag_idx <- which(args %in% c("--config", "-c"))
-  if (length(flag_idx) && flag_idx < length(args)) {
-    return(args[flag_idx + 1])
+  if (length(flag_idx) > 0 && flag_idx[1] < length(args)) {
+    return(args[flag_idx[1] + 1])
   }
   return(args[1])
 }
@@ -37,7 +40,11 @@ if (is.null(config$survival)) {
 }
 
 workdir <- if (!is.null(config$workdir)) config$workdir else getwd()
-if (!dir.exists(workdir)) {
+# Handle "." or NA from YAML parsing
+if (is.na(workdir) || identical(workdir, ".")) {
+  workdir <- getwd()
+}
+if (!is.character(workdir) || !dir.exists(workdir)) {
   stop("Configured working directory does not exist: ", workdir)
 }
 setwd(workdir)
@@ -68,7 +75,7 @@ non_feature_cols <- unique(c(SampleID, Survtime, Event))
 non_feature_cols <- non_feature_cols[non_feature_cols %in% colnames(dat)]
 
 totvar <- if (!is.null(surv_cfg$features)) {
-  surv_cfg$features
+  as.character(unlist(surv_cfg$features))
 } else {
   setdiff(colnames(dat), non_feature_cols)
 }
@@ -78,15 +85,38 @@ numSeed <- if (!is.null(surv_cfg$num_seed)) as.integer(surv_cfg$num_seed) else 1
 SplitProp <- if (!is.null(surv_cfg$split_prop)) as.numeric(surv_cfg$split_prop) else 0.7
 outdir <- if (!is.null(surv_cfg$output_dir)) surv_cfg$output_dir else "StepSurv"
 excvar <- surv_cfg$exclude
-if (is.null(excvar)) excvar <- character(0)
-fixvar <- surv_cfg$include
-if (is.null(fixvar)) fixvar <- character(0)
+if (is.null(excvar) || length(excvar) == 0) {
+  excvar <- character(0)
+} else {
+  excvar <- as.character(unlist(excvar))
+  # Remove NA and empty strings
+  excvar <- excvar[!is.na(excvar) & nchar(excvar) > 0]
+}
 
-Result <- SurvTrainAUCStepwise(totvar, dat, fixvar, excvar, horizon, numSeed, SplitProp, outdir)
+fixvar <- surv_cfg$include
+if (is.null(fixvar) || length(fixvar) == 0) {
+  fixvar <- character(0)
+} else {
+  fixvar <- as.character(unlist(fixvar))
+  # Remove NA and empty strings
+  fixvar <- fixvar[!is.na(fixvar) & nchar(fixvar) > 0]
+}
+
+# Output initial progress to stderr (unbuffered)
+cat("PROGRESS_START:", numSeed, "\n", sep = "", file = stderr())
+cat("STEPWISE_START\n", sep = "", file = stderr())
+
+Result <- SurvTrainAUCStepwise(totvar, dat, fixvar, excvar, horizon, numSeed, SplitProp, outdir, Survtime, Event)
+
+cat("STEPWISE_DONE\n", sep = "", file = stderr())
 
 FinalRes <- NULL
 trROCobjList <- tsROCobjList <- vector("list", numSeed)
+
 for (s in seq_len(numSeed)) {
+  # Output progress to stderr (unbuffered)
+  cat("PROGRESS:", s, "\n", sep = "", file = stderr())
+
   set.seed(s)
   repeat {
     trIdx <- createDataPartition(dat[, Event], p = SplitProp, list = FALSE, times = 1)
