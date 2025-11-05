@@ -56,6 +56,7 @@ assign_risk_groups <- function(scores, labels = c("Low", "Medium", "High")) {
 
   if (length(unique(breaks)) == length(breaks)) {
     groups <- cut(scores, breaks = breaks, include.lowest = TRUE, labels = labels)
+    return(factor(groups, levels = labels))  # Explicitly return here
   } else {
     groups <- rep(NA_character_, length(scores))
     valid_idx <- which(!is.na(scores))
@@ -77,11 +78,8 @@ assign_risk_groups <- function(scores, labels = c("Low", "Medium", "High")) {
         start <- end + 1
       }
     }
-    groups <- factor(groups, levels = labels)
-    return(groups)
+    return(factor(groups, levels = labels))  # Return here explicitly
   }
-
-  factor(groups, levels = labels)
 }
 
 # Helper function to save plots in multiple formats (TIFF 300 DPI and SVG)
@@ -741,10 +739,20 @@ PlotSurvKM <- function(dat, numSeed, SplitProp, Result, horizon) {
 
   # Debug: print risk score range
   cat(paste("STEPWISE_LOG:Risk scores range:", min(risk_scores_valid, na.rm=TRUE), "to", max(risk_scores_valid, na.rm=TRUE), "\n"), file = stderr())
+  cat(paste("STEPWISE_LOG:Number of valid risk scores:", length(risk_scores_valid), "\n"), file = stderr())
 
   base_groups <- assign_risk_groups(risk_scores_valid)
+  
+  # Debug: check base_groups distribution immediately after creation
+  cat(paste("STEPWISE_LOG:Base groups distribution:\n"), file = stderr())
+  print(table(base_groups, useNA = "always"), file = stderr())
+  
   risk_groups <- factor(paste(base_groups, "Risk"),
                         levels = paste(c("Low", "Medium", "High"), "Risk"))
+  
+  # Debug: check risk_groups after adding "Risk" suffix
+  cat(paste("STEPWISE_LOG:Risk groups after factor creation:\n"), file = stderr())
+  print(table(risk_groups, useNA = "always"), file = stderr())
 
   valid_group_idx <- which(!is.na(risk_groups))
   if (length(valid_group_idx) < 2) {
@@ -752,13 +760,15 @@ PlotSurvKM <- function(dat, numSeed, SplitProp, Result, horizon) {
     return(NULL)
   }
 
-  risk_groups <- droplevels(risk_groups[valid_group_idx])
+  # DO NOT use droplevels - we need to keep all risk group levels even if some are empty
+  risk_groups <- risk_groups[valid_group_idx]
   surv_time <- dat$Survtime[valid_idx][valid_group_idx]
   surv_event <- dat$Event[valid_idx][valid_group_idx]
 
   # Verify we have at least 2 groups with samples
   group_counts <- table(risk_groups)
   cat(paste("STEPWISE_LOG:Kaplan-Meier groups:", paste(names(group_counts), "=", group_counts, collapse=", "), "\n"), file = stderr())
+  cat(paste("STEPWISE_LOG:Total samples:", length(risk_groups), "\n"), file = stderr())
 
   if (length(group_counts) < 2 || any(group_counts == 0)) {
     cat(paste("STEPWISE_LOG:Kaplan-Meier plot skipped - insufficient groups:", 
