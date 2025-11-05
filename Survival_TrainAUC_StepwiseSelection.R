@@ -46,18 +46,44 @@ nature_colors <- list(
 )
 
 # Helper to create consistent tertile-based risk groups
-assign_risk_groups <- function(scores, labels = c("Low", "Medium", "High")) {
+assign_risk_groups <- function(scores, labels = c("Low", "Medium", "High"), log_file = NULL) {
   if (length(scores) == 0 || all(is.na(scores))) {
     return(factor(rep(NA_character_, length(scores)), levels = labels))
+  }
+
+  # Log initial statistics
+  if (!is.null(log_file)) {
+    write(paste("\n=== assign_risk_groups called ==="), file = log_file, append = TRUE)
+    write(paste("Total scores:", length(scores)), file = log_file, append = TRUE)
+    write(paste("NA scores:", sum(is.na(scores))), file = log_file, append = TRUE)
+    write(paste("Valid scores:", sum(!is.na(scores))), file = log_file, append = TRUE)
+    write(paste("Score range:", min(scores, na.rm=TRUE), "to", max(scores, na.rm=TRUE)), file = log_file, append = TRUE)
+    write(paste("Score mean:", mean(scores, na.rm=TRUE), "SD:", sd(scores, na.rm=TRUE)), file = log_file, append = TRUE)
   }
 
   probs <- seq(0, 1, length.out = length(labels) + 1)
   breaks <- quantile(scores, probs = probs, na.rm = TRUE, names = FALSE)
 
+  if (!is.null(log_file)) {
+    write(paste("Quantile breaks:", paste(breaks, collapse=", ")), file = log_file, append = TRUE)
+    write(paste("Unique breaks:", length(unique(breaks)), "out of", length(breaks)), file = log_file, append = TRUE)
+  }
+
   if (length(unique(breaks)) == length(breaks)) {
+    # Use cut when all breaks are unique
     groups <- cut(scores, breaks = breaks, include.lowest = TRUE, labels = labels)
-    return(factor(groups, levels = labels))  # Explicitly return here
+    if (!is.null(log_file)) {
+      write("Using cut() method for group assignment", file = log_file, append = TRUE)
+      write(paste("Group distribution after cut():"), file = log_file, append = TRUE)
+      tbl <- table(groups, useNA = "always")
+      write(paste(capture.output(print(tbl)), collapse="\n"), file = log_file, append = TRUE)
+    }
+    return(factor(groups, levels = labels))
   } else {
+    # Manual assignment when breaks are not unique (e.g., many identical scores)
+    if (!is.null(log_file)) {
+      write("Using manual assignment (breaks not unique)", file = log_file, append = TRUE)
+    }
     groups <- rep(NA_character_, length(scores))
     valid_idx <- which(!is.na(scores))
     if (length(valid_idx) > 0) {
@@ -65,6 +91,11 @@ assign_risk_groups <- function(scores, labels = c("Low", "Medium", "High")) {
       n_valid <- length(ordered_idx)
       split_size <- floor(n_valid / length(labels))
       remainder <- n_valid - split_size * (length(labels) - 1)
+
+      if (!is.null(log_file)) {
+        write(paste("Manual split - valid samples:", n_valid, "split_size:", split_size, "remainder:", remainder), file = log_file, append = TRUE)
+      }
+
       start <- 1
       for (i in seq_along(labels)) {
         if (i < length(labels)) {
@@ -72,13 +103,23 @@ assign_risk_groups <- function(scores, labels = c("Low", "Medium", "High")) {
         } else {
           end <- start + remainder - 1
         }
-        if (start <= end) {
+        if (start <= end && start <= length(ordered_idx) && end <= length(ordered_idx)) {
           groups[ordered_idx[start:end]] <- labels[i]
+          if (!is.null(log_file)) {
+            write(paste("  Group", labels[i], "- indices", start, "to", end, "(n=", end-start+1, ")"), file = log_file, append = TRUE)
+          }
         }
         start <- end + 1
       }
     }
-    return(factor(groups, levels = labels))  # Return here explicitly
+
+    if (!is.null(log_file)) {
+      write(paste("Group distribution after manual assignment:"), file = log_file, append = TRUE)
+      tbl <- table(groups, useNA = "always")
+      write(paste(capture.output(print(tbl)), collapse="\n"), file = log_file, append = TRUE)
+    }
+
+    return(factor(groups, levels = labels))
   }
 }
 
@@ -717,77 +758,149 @@ PlotSurVarImp <- function(dat,Result){
 
 # Kaplan-Meier Survival Curves by Risk Groups
 PlotSurvKM <- function(dat, numSeed, SplitProp, Result, horizon) {
+  # Create debug log file
+  log_file <- "figures/Surv_KM_Debug.log"
+  if (!dir.exists("figures")) dir.create("figures", recursive = TRUE)
+
+  # Initialize log file
+  write(paste("=== Kaplan-Meier Plot Debug Log ==="), file = log_file, append = FALSE)
+  write(paste("Timestamp:", Sys.time()), file = log_file, append = TRUE)
+  write(paste("Total samples in dataset:", nrow(dat)), file = log_file, append = TRUE)
+  write(paste("Variables in model:", Result[1,1]), file = log_file, append = TRUE)
+
   # Get risk scores for all data
   f <- as.formula(paste0('Surv(Survtime,Event) ~ ', as.character(Result[1,1])))
   Scaledat <- cbind(dat[,c('Survtime','Event')],apply(dat[,match(gsub(" ","",strsplit(Result[1,1],"\\+")[[1]]),colnames(dat))],2,function(v) scale(v)))
-  
+
   suppressWarnings({
     mod <- coxph(f, data = Scaledat)
   })
-  
-  if (is.null(mod)) return(NULL)
-  
+
+  if (is.null(mod)) {
+    write("ERROR: Cox model is NULL", file = log_file, append = TRUE)
+    cat("STEPWISE_LOG:Kaplan-Meier plot skipped - Cox model failed\n", file = stderr())
+    return(NULL)
+  }
+
+  write(paste("Cox model fitted successfully"), file = log_file, append = TRUE)
+
   risk_scores <- predict(mod, newdata = Scaledat)
 
+  write(paste("\n=== Risk Scores ==="), file = log_file, append = TRUE)
+  write(paste("Total risk scores:", length(risk_scores)), file = log_file, append = TRUE)
+  write(paste("NA risk scores:", sum(is.na(risk_scores))), file = log_file, append = TRUE)
+
   valid_idx <- which(!is.na(risk_scores) & !is.na(dat$Survtime) & !is.na(dat$Event))
+  write(paste("Valid samples after filtering:", length(valid_idx)), file = log_file, append = TRUE)
+
   if (length(valid_idx) < 2) {
+    write("ERROR: Insufficient valid samples", file = log_file, append = TRUE)
     cat("STEPWISE_LOG:Kaplan-Meier plot skipped - insufficient valid samples\n", file = stderr())
     return(NULL)
   }
 
   risk_scores_valid <- risk_scores[valid_idx]
+  write(paste("Risk score range:", min(risk_scores_valid, na.rm=TRUE), "to", max(risk_scores_valid, na.rm=TRUE)), file = log_file, append = TRUE)
+  write(paste("Risk score mean:", mean(risk_scores_valid, na.rm=TRUE), "SD:", sd(risk_scores_valid, na.rm=TRUE)), file = log_file, append = TRUE)
+
+  # Summary statistics
+  write(paste("\n=== Risk Score Summary ==="), file = log_file, append = TRUE)
+  write(paste(capture.output(summary(risk_scores_valid)), collapse="\n"), file = log_file, append = TRUE)
 
   # Debug: print risk score range
   cat(paste("STEPWISE_LOG:Risk scores range:", min(risk_scores_valid, na.rm=TRUE), "to", max(risk_scores_valid, na.rm=TRUE), "\n"), file = stderr())
   cat(paste("STEPWISE_LOG:Number of valid risk scores:", length(risk_scores_valid), "\n"), file = stderr())
 
-  base_groups <- assign_risk_groups(risk_scores_valid)
-  
+  # Assign risk groups with logging
+  base_groups <- assign_risk_groups(risk_scores_valid, log_file = log_file)
+
+  write(paste("\n=== Risk Groups Created ==="), file = log_file, append = TRUE)
+  write(paste("Base groups distribution:"), file = log_file, append = TRUE)
+  tbl_base <- table(base_groups, useNA = "always")
+  write(paste(capture.output(print(tbl_base)), collapse="\n"), file = log_file, append = TRUE)
+
   # Debug: check base_groups distribution immediately after creation
   cat(paste("STEPWISE_LOG:Base groups distribution:\n"), file = stderr())
   print(table(base_groups, useNA = "always"), file = stderr())
-  
+
+  # Create full risk group labels
   risk_groups <- factor(paste(base_groups, "Risk"),
                         levels = paste(c("Low", "Medium", "High"), "Risk"))
-  
+
+  write(paste("\n=== Risk Groups with Labels ==="), file = log_file, append = TRUE)
+  tbl_risk <- table(risk_groups, useNA = "always")
+  write(paste(capture.output(print(tbl_risk)), collapse="\n"), file = log_file, append = TRUE)
+
   # Debug: check risk_groups after adding "Risk" suffix
   cat(paste("STEPWISE_LOG:Risk groups after factor creation:\n"), file = stderr())
   print(table(risk_groups, useNA = "always"), file = stderr())
 
   valid_group_idx <- which(!is.na(risk_groups))
+  write(paste("Valid group assignments:", length(valid_group_idx)), file = log_file, append = TRUE)
+
   if (length(valid_group_idx) < 2) {
+    write("ERROR: Insufficient risk group assignments", file = log_file, append = TRUE)
     cat("STEPWISE_LOG:Kaplan-Meier plot skipped - insufficient risk group assignments\n", file = stderr())
     return(NULL)
   }
 
-  # DO NOT use droplevels - we need to keep all risk group levels even if some are empty
-  risk_groups <- risk_groups[valid_group_idx]
+  # Filter data to valid groups only
+  risk_groups_filtered <- risk_groups[valid_group_idx]
   surv_time <- dat$Survtime[valid_idx][valid_group_idx]
   surv_event <- dat$Event[valid_idx][valid_group_idx]
 
   # Verify we have at least 2 groups with samples
-  group_counts <- table(risk_groups)
-  cat(paste("STEPWISE_LOG:Kaplan-Meier groups:", paste(names(group_counts), "=", group_counts, collapse=", "), "\n"), file = stderr())
-  cat(paste("STEPWISE_LOG:Total samples:", length(risk_groups), "\n"), file = stderr())
+  group_counts <- table(risk_groups_filtered)
+  write(paste("\n=== Final Group Counts ==="), file = log_file, append = TRUE)
+  write(paste(capture.output(print(group_counts)), collapse="\n"), file = log_file, append = TRUE)
+  write(paste("Number of groups:", length(group_counts)), file = log_file, append = TRUE)
+  write(paste("Total samples in groups:", sum(group_counts)), file = log_file, append = TRUE)
 
-  if (length(group_counts) < 2 || any(group_counts == 0)) {
-    cat(paste("STEPWISE_LOG:Kaplan-Meier plot skipped - insufficient groups:", 
+  cat(paste("STEPWISE_LOG:Kaplan-Meier groups:", paste(names(group_counts), "=", group_counts, collapse=", "), "\n"), file = stderr())
+  cat(paste("STEPWISE_LOG:Total samples:", length(risk_groups_filtered), "\n"), file = stderr())
+
+  if (length(group_counts) < 2) {
+    write(paste("ERROR: Only", length(group_counts), "group(s) found, need at least 2"), file = log_file, append = TRUE)
+    cat(paste("STEPWISE_LOG:Kaplan-Meier plot skipped - insufficient groups:",
               paste(names(group_counts), "=", group_counts, collapse=", "), "\n"), file = stderr())
     return(NULL)
   }
-  
+
+  # Remove groups with 0 samples (shouldn't happen but just in case)
+  if (any(group_counts == 0)) {
+    write("WARNING: Some groups have 0 samples (filtering them out)", file = log_file, append = TRUE)
+  }
+
   surv_data <- data.frame(
     time = surv_time,
     event = surv_event,
-    risk_group = risk_groups
+    risk_group = risk_groups_filtered
   )
-  
+
+  write(paste("\n=== Survival Data ==="), file = log_file, append = TRUE)
+  write(paste("Survival data rows:", nrow(surv_data)), file = log_file, append = TRUE)
+  write(paste("Time range:", min(surv_data$time), "to", max(surv_data$time)), file = log_file, append = TRUE)
+  write(paste("Events:", sum(surv_data$event), "out of", nrow(surv_data),
+              paste0("(", round(100*sum(surv_data$event)/nrow(surv_data), 1), "%)")), file = log_file, append = TRUE)
+
   # Fit survival curves
-  surv_fit <- survfit(Surv(time, event) ~ risk_group, data = surv_data)
-  
+  tryCatch({
+    surv_fit <- survfit(Surv(time, event) ~ risk_group, data = surv_data)
+    write(paste("\n=== Survival Fit ==="), file = log_file, append = TRUE)
+    write(paste("Strata:", paste(names(surv_fit$strata), collapse=", ")), file = log_file, append = TRUE)
+    write(paste("Number of strata:", length(surv_fit$strata)), file = log_file, append = TRUE)
+    for (i in seq_along(surv_fit$strata)) {
+      write(paste("  ", names(surv_fit$strata)[i], ":", surv_fit$strata[i], "observations"), file = log_file, append = TRUE)
+    }
+  }, error = function(e) {
+    write(paste("ERROR in survfit:", e$message), file = log_file, append = TRUE)
+    cat(paste("STEPWISE_LOG:Error in survival fit:", e$message, "\n"), file = stderr())
+    return(NULL)
+  })
+
   # Debug: check survival fit
   cat(paste("STEPWISE_LOG:Survival fit strata:", paste(names(surv_fit$strata), collapse=", "), "\n"), file = stderr())
-  
+
   # Create plot data manually
   surv_summary <- summary(surv_fit)
   plot_data <- data.frame(
@@ -795,32 +908,58 @@ PlotSurvKM <- function(dat, numSeed, SplitProp, Result, horizon) {
     surv = surv_summary$surv,
     strata = gsub("risk_group=", "", as.character(surv_summary$strata))
   )
-  
+
+  write(paste("\n=== Plot Data ==="), file = log_file, append = TRUE)
+  write(paste("Plot data rows:", nrow(plot_data)), file = log_file, append = TRUE)
+  write(paste("Unique strata in plot:", paste(unique(plot_data$strata), collapse=", ")), file = log_file, append = TRUE)
+  for (stratum in unique(plot_data$strata)) {
+    n_points <- sum(plot_data$strata == stratum)
+    write(paste("  ", stratum, ":", n_points, "time points"), file = log_file, append = TRUE)
+  }
+
   # Debug: check plot data groups
   cat(paste("STEPWISE_LOG:Plot data groups:", paste(unique(plot_data$strata), collapse=", "), "\n"), file = stderr())
-  
+
   # Create color mapping based on available groups
   available_groups <- unique(plot_data$strata)
   color_map <- c()
   if ("Low Risk" %in% available_groups) color_map["Low Risk"] <- nature_colors$green
   if ("Medium Risk" %in% available_groups) color_map["Medium Risk"] <- nature_colors$orange
   if ("High Risk" %in% available_groups) color_map["High Risk"] <- nature_colors$red
-  
+
+  write(paste("\n=== Color Mapping ==="), file = log_file, append = TRUE)
+  write(paste("Color map:"), file = log_file, append = TRUE)
+  for (group in names(color_map)) {
+    write(paste("  ", group, ":", color_map[group]), file = log_file, append = TRUE)
+  }
+
   # Ensure all groups are in the plot
-  if (length(color_map) < length(available_groups)) {
-    cat(paste("STEPWISE_LOG:Warning - some groups missing from color map. Available:", 
+  if (length(color_map) != length(available_groups)) {
+    write(paste("WARNING: Color map size", length(color_map), "!= available groups", length(available_groups)), file = log_file, append = TRUE)
+    cat(paste("STEPWISE_LOG:Warning - some groups missing from color map. Available:",
               paste(available_groups, collapse=", "), "\n"), file = stderr())
   }
-  
+
+  write(paste("\n=== Creating Plot ==="), file = log_file, append = TRUE)
+
   p <- ggplot(plot_data, aes(x = time, y = surv, color = strata)) +
     geom_step(linewidth = 0.5) +
-    labs(x = "Time (years)", y = "Survival Probability", 
+    labs(x = "Time (years)", y = "Survival Probability",
          title = "Kaplan-Meier Survival Curves by Risk Groups", color = "Risk Group") +
     ylim(0, 1) +
     scale_color_manual(values = color_map) +
     nature_theme(base_size = 10)
-  
+
+  write(paste("Plot created successfully"), file = log_file, append = TRUE)
+  write(paste("\n=== Saving Plot ==="), file = log_file, append = TRUE)
+
   save_plot(p, 'Surv_Kaplan_Meier', width_inch = 7, height_inch = 5)
+
+  write(paste("Plot saved successfully"), file = log_file, append = TRUE)
+  write(paste("\n=== Analysis Complete ==="), file = log_file, append = TRUE)
+  write(paste("Debug log saved to:", normalizePath(log_file, mustWork = FALSE)), file = log_file, append = TRUE)
+
+  cat(paste("STEPWISE_LOG:Kaplan-Meier debug log saved to:", normalizePath(log_file, mustWork = FALSE), "\n"), file = stderr())
 }
 
 # Time-dependent AUC
@@ -905,13 +1044,13 @@ PlotSurvTimeAUC <- function(dat, numSeed, SplitProp, Result) {
 PlotSurvRiskDist <- function(dat, Result) {
   f <- as.formula(paste0('Surv(Survtime,Event) ~ ', as.character(Result[1,1])))
   Scaledat <- cbind(dat[,c('Survtime','Event')],apply(dat[,match(gsub(" ","",strsplit(Result[1,1],"\\+")[[1]]),colnames(dat))],2,function(v) scale(v)))
-  
+
   suppressWarnings({
     mod <- coxph(f, data = Scaledat)
   })
-  
+
   if (is.null(mod)) return(NULL)
-  
+
   risk_scores <- predict(mod, newdata = Scaledat)
   valid_idx <- which(!is.na(risk_scores))
   if (length(valid_idx) == 0) {
@@ -926,8 +1065,9 @@ PlotSurvRiskDist <- function(dat, Result) {
     event = factor(dat$Event[valid_idx], levels = c(0, 1), labels = c("Censored", "Event"))
   )
 
-  # Create risk groups
-  risk_data$risk_group <- assign_risk_groups(risk_scores_valid)
+  # Create risk groups (use log file for debugging if needed)
+  log_file <- "figures/Surv_Risk_Debug.log"
+  risk_data$risk_group <- assign_risk_groups(risk_scores_valid, log_file = log_file)
   
   # Calculate density scaling factor
   n_total <- length(risk_data$risk_score)
