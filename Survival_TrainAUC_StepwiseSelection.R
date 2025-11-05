@@ -45,6 +45,45 @@ nature_colors <- list(
   cyan = "#17becf"
 )
 
+# Helper to create consistent tertile-based risk groups
+assign_risk_groups <- function(scores, labels = c("Low", "Medium", "High")) {
+  if (length(scores) == 0 || all(is.na(scores))) {
+    return(factor(rep(NA_character_, length(scores)), levels = labels))
+  }
+
+  probs <- seq(0, 1, length.out = length(labels) + 1)
+  breaks <- quantile(scores, probs = probs, na.rm = TRUE, names = FALSE)
+
+  if (length(unique(breaks)) == length(breaks)) {
+    groups <- cut(scores, breaks = breaks, include.lowest = TRUE, labels = labels)
+  } else {
+    groups <- rep(NA_character_, length(scores))
+    valid_idx <- which(!is.na(scores))
+    if (length(valid_idx) > 0) {
+      ordered_idx <- valid_idx[order(scores[valid_idx])]
+      n_valid <- length(ordered_idx)
+      split_size <- floor(n_valid / length(labels))
+      remainder <- n_valid - split_size * (length(labels) - 1)
+      start <- 1
+      for (i in seq_along(labels)) {
+        if (i < length(labels)) {
+          end <- start + split_size - 1
+        } else {
+          end <- start + remainder - 1
+        }
+        if (start <= end) {
+          groups[ordered_idx[start:end]] <- labels[i]
+        }
+        start <- end + 1
+      }
+    }
+    groups <- factor(groups, levels = labels)
+    return(groups)
+  }
+
+  factor(groups, levels = labels)
+}
+
 # Helper function to save plots in multiple formats (TIFF 300 DPI and SVG)
 save_plot <- function(plot_obj, filename_base, width_inch = 7, height_inch = 5, is_ggplot = TRUE) {
   # Create figures directory if it doesn't exist
@@ -666,8 +705,8 @@ PlotSurVarImp <- function(dat,Result){
   names(coefs)[2]='se'
   
   p <- ggplot(coefs, aes(x = vars, y = coef, color = vars)) +
-    geom_hline(yintercept = 0, linetype = "dashed", color = "gray50", linewidth = 0.8) +
-    geom_errorbar(aes(ymin = coef - se, ymax = coef + se), linewidth = 1, width = 0, color = "black") +
+    geom_hline(yintercept = 0, linetype = "dashed", color = "gray50", linewidth = 0.5) +
+    geom_errorbar(aes(ymin = coef - se, ymax = coef + se), linewidth = 0.5, width = 0, color = "black") +
     geom_point(size = 3, color = nature_colors$blue) +
     geom_text(aes(label = sprintf("%.2f", coef)), hjust = 0.4, vjust = -1, size = 3, fontface = "bold", color = "black") +
     coord_flip() +
@@ -691,36 +730,36 @@ PlotSurvKM <- function(dat, numSeed, SplitProp, Result, horizon) {
   if (is.null(mod)) return(NULL)
   
   risk_scores <- predict(mod, newdata = Scaledat)
-  
+
+  valid_idx <- which(!is.na(risk_scores) & !is.na(dat$Survtime) & !is.na(dat$Event))
+  if (length(valid_idx) < 2) {
+    cat("STEPWISE_LOG:Kaplan-Meier plot skipped - insufficient valid samples\n", file = stderr())
+    return(NULL)
+  }
+
+  risk_scores_valid <- risk_scores[valid_idx]
+
   # Debug: print risk score range
-  cat(paste("STEPWISE_LOG:Risk scores range:", min(risk_scores, na.rm=TRUE), "to", max(risk_scores, na.rm=TRUE), "\n"), file = stderr())
-  
-  # Create risk groups - use ranked tertiles to ensure balanced groups
-  n_samples <- length(risk_scores)
-  
-  # Sort risk scores and assign groups based on rank
-  sorted_indices <- order(risk_scores)
-  
-  # Calculate group sizes
-  n_low <- floor(n_samples / 3)
-  n_medium <- floor(n_samples / 3)
-  n_high <- n_samples - n_low - n_medium
-  
-  # Initialize risk groups vector
-  risk_groups <- character(n_samples)
-  
-  # Assign groups based on rank
-  risk_groups[sorted_indices[1:n_low]] <- "Low Risk"
-  risk_groups[sorted_indices[(n_low+1):(n_low+n_medium)]] <- "Medium Risk"
-  risk_groups[sorted_indices[(n_low+n_medium+1):n_samples]] <- "High Risk"
-  
-  # Convert to factor
-  risk_groups <- factor(risk_groups, levels = c("Low Risk", "Medium Risk", "High Risk"))
-  
+  cat(paste("STEPWISE_LOG:Risk scores range:", min(risk_scores_valid, na.rm=TRUE), "to", max(risk_scores_valid, na.rm=TRUE), "\n"), file = stderr())
+
+  base_groups <- assign_risk_groups(risk_scores_valid)
+  risk_groups <- factor(paste(base_groups, "Risk"),
+                        levels = paste(c("Low", "Medium", "High"), "Risk"))
+
+  valid_group_idx <- which(!is.na(risk_groups))
+  if (length(valid_group_idx) < 2) {
+    cat("STEPWISE_LOG:Kaplan-Meier plot skipped - insufficient risk group assignments\n", file = stderr())
+    return(NULL)
+  }
+
+  risk_groups <- droplevels(risk_groups[valid_group_idx])
+  surv_time <- dat$Survtime[valid_idx][valid_group_idx]
+  surv_event <- dat$Event[valid_idx][valid_group_idx]
+
   # Verify we have at least 2 groups with samples
   group_counts <- table(risk_groups)
   cat(paste("STEPWISE_LOG:Kaplan-Meier groups:", paste(names(group_counts), "=", group_counts, collapse=", "), "\n"), file = stderr())
-  
+
   if (length(group_counts) < 2 || any(group_counts == 0)) {
     cat(paste("STEPWISE_LOG:Kaplan-Meier plot skipped - insufficient groups:", 
               paste(names(group_counts), "=", group_counts, collapse=", "), "\n"), file = stderr())
@@ -728,8 +767,8 @@ PlotSurvKM <- function(dat, numSeed, SplitProp, Result, horizon) {
   }
   
   surv_data <- data.frame(
-    time = dat$Survtime,
-    event = dat$Event,
+    time = surv_time,
+    event = surv_event,
     risk_group = risk_groups
   )
   
@@ -764,7 +803,7 @@ PlotSurvKM <- function(dat, numSeed, SplitProp, Result, horizon) {
   }
   
   p <- ggplot(plot_data, aes(x = time, y = surv, color = strata)) +
-    geom_step(linewidth = 1) +
+    geom_step(linewidth = 0.5) +
     labs(x = "Time (years)", y = "Survival Probability", 
          title = "Kaplan-Meier Survival Curves by Risk Groups", color = "Risk Group") +
     ylim(0, 1) +
@@ -842,7 +881,7 @@ PlotSurvTimeAUC <- function(dat, numSeed, SplitProp, Result) {
   auc_summary <- aggregate(auc ~ time + dataset, data = auc_over_time, FUN = mean, na.rm = TRUE)
   
   p <- ggplot(auc_summary, aes(x = time, y = auc, color = dataset)) +
-    geom_line(linewidth = 1) +
+    geom_line(linewidth = 0.5) +
     geom_point(size = 2, alpha = 0.8) +
     labs(x = "Time (years)", y = "AUC", title = "Time-dependent AUC", color = "Dataset") +
     ylim(0, 1) +
@@ -864,15 +903,21 @@ PlotSurvRiskDist <- function(dat, Result) {
   if (is.null(mod)) return(NULL)
   
   risk_scores <- predict(mod, newdata = Scaledat)
-  
+  valid_idx <- which(!is.na(risk_scores))
+  if (length(valid_idx) == 0) {
+    cat("STEPWISE_LOG:Risk distribution plots skipped - no valid risk scores\n", file = stderr())
+    return(NULL)
+  }
+
+  risk_scores_valid <- risk_scores[valid_idx]
+
   risk_data <- data.frame(
-    risk_score = risk_scores,
-    event = factor(dat$Event, levels = c(0, 1), labels = c("Censored", "Event"))
+    risk_score = risk_scores_valid,
+    event = factor(dat$Event[valid_idx], levels = c(0, 1), labels = c("Censored", "Event"))
   )
-  
+
   # Create risk groups
-  risk_data$risk_group <- cut(risk_scores, breaks = quantile(risk_scores, probs = c(0, 1/3, 2/3, 1), na.rm = TRUE), 
-                               include.lowest = TRUE, labels = c("Low", "Medium", "High"))
+  risk_data$risk_group <- assign_risk_groups(risk_scores_valid)
   
   # Calculate density scaling factor
   n_total <- length(risk_data$risk_score)
@@ -881,15 +926,15 @@ PlotSurvRiskDist <- function(dat, Result) {
   
   p1 <- ggplot(risk_data, aes(x = risk_score, fill = event)) +
     geom_histogram(alpha = 0.7, bins = 30, position = "identity", linewidth = 0.3) +
-    geom_density(alpha = 0.4, aes(y = after_stat(density) * n_total * bin_width), 
-                linewidth = 1, inherit.aes = TRUE) +
+    geom_density(alpha = 0.4, aes(y = after_stat(density) * n_total * bin_width),
+                linewidth = 0.5, inherit.aes = TRUE) +
     labs(x = "Risk Score", y = "Frequency", 
          title = "Distribution of Risk Scores", fill = "Event Status") +
     scale_fill_manual(values = c("Censored" = nature_colors$blue, "Event" = nature_colors$red)) +
     nature_theme(base_size = 10)
   
   p2 <- ggplot(risk_data, aes(x = risk_group, y = risk_score, fill = risk_group)) +
-    geom_boxplot(alpha = 0.7, outlier.size = 1.5, linewidth = 0.8) +
+    geom_boxplot(alpha = 0.7, outlier.size = 1.5, linewidth = 0.5) +
     geom_jitter(width = 0.2, alpha = 0.3, size = 1) +
     labs(x = "Risk Group", y = "Risk Score", title = "Risk Score by Group") +
     scale_fill_manual(values = c("Low" = nature_colors$green, 
@@ -928,7 +973,7 @@ PlotSurvStepwiseProcess <- function(outdir) {
                               id.vars = "step", variable.name = "type", value.name = "AUC")
   
   p <- ggplot(auc_long, aes(x = step, y = AUC, color = type, group = type)) +
-    geom_line(linewidth = 1) +
+    geom_line(linewidth = 0.5) +
     geom_point(size = 2.5, alpha = 0.8) +
     geom_text(aes(label = sprintf("%.3f", AUC)), vjust = -0.5, size = 2.8, fontface = "bold") +
     labs(x = "Step", y = "AUC", title = "Stepwise Selection Process", color = "Dataset") +
