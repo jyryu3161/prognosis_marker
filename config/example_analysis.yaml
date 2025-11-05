@@ -8,8 +8,9 @@ binary:
   outcome: OS
   time_variable: OS.year
   split_prop: 0.7
-  num_seed: 100
+  num_seed: 3  # Number of iterations (reduced for testing)
   output_dir: results/binary
+  freq: 2  # Cutoff for most frequent significant genes (out of num_seed iterations). For testing with num_seed=3, use 2.
   exclude: []
   include: []
   # Optionally constrain the candidate feature set by listing column names here.
@@ -22,8 +23,9 @@ survival:
   event: OS
   horizon: 5
   split_prop: 0.7
-  num_seed: 100
+  num_seed: 3  # Number of iterations (reduced for testing)
   output_dir: results/survival
+  freq: 2  # Cutoff for most frequent significant genes (out of num_seed iterations). For testing with num_seed=3, use 2.
   exclude: []
   include: []
   # Optionally constrain the candidate feature set by listing column names here.

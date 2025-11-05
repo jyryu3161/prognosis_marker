@@ -1,244 +1,158 @@
-suppressPackageStartupMessages({
-  library(nsROC)
-  library(caret)
-  library(survival)
-  library(pROC)
-  library(cutpointr)
-  library(coefplot)
-  library(ggplot2)
-  library(yaml)
-})
+library(nsROC)
+library(caret)
+library(survival)
+library(pROC)
+library(cutpointr)
+library(coefplot)
+library(yaml)
 
-# Source the helper function file
-source("Survival_TrainAUC_StepwiseSelection.R")
-
-parse_config_path <- function(args) {
-  if (!length(args)) {
-    return(file.path("config", "example_analysis.yaml"))
-  }
-  eq_idx <- grep("^--config=", args)
-  if (length(eq_idx)) {
-    return(sub("^--config=", "", args[eq_idx[1]]))
-  }
-  flag_idx <- which(args %in% c("--config", "-c"))
-  if (length(flag_idx) > 0 && flag_idx[1] < length(args)) {
-    return(args[flag_idx[1] + 1])
-  }
-  return(args[1])
-}
-
+# Parse command line arguments
 args <- commandArgs(trailingOnly = TRUE)
-config_path <- parse_config_path(args)
+config_file <- "config/example_analysis.yaml"  # Default config file
 
-if (!file.exists(config_path)) {
-  stop("Configuration file not found: ", config_path)
+# Find --config argument
+if (length(args) > 0) {
+  config_idx <- grep("^--config", args)
+  if (length(config_idx) > 0) {
+    if (args[config_idx] == "--config" && length(args) > config_idx) {
+      config_file <- args[config_idx + 1]
+    } else if (grepl("^--config=", args[config_idx])) {
+      config_file <- sub("^--config=", "", args[config_idx])
+    }
+  }
 }
 
-config <- yaml::read_yaml(config_path)
+# Load config
+if (!file.exists(config_file)) {
+  stop(paste("Config file not found:", config_file))
+}
+
+config <- yaml::read_yaml(config_file)
+
+# Get working directory
+if (!is.null(config$workdir)) {
+  setwd(config$workdir)
+} else {
+  setwd(".")
+}
+
+cat(paste("STEPWISE_LOG:Starting Survival Analysis\n"), file = stderr())
+source('Survival_TrainAUC_StepwiseSelection.R')
+
+# Get survival config
 if (is.null(config$survival)) {
-  stop("The configuration file must contain a 'survival' section.")
+  stop("Survival configuration not found in config file")
 }
 
-workdir <- if (!is.null(config$workdir)) config$workdir else getwd()
-# Handle "." or NA from YAML parsing
-if (is.na(workdir) || identical(workdir, ".")) {
-  workdir <- getwd()
-}
-if (!is.character(workdir) || !dir.exists(workdir)) {
-  stop("Configured working directory does not exist: ", workdir)
-}
-setwd(workdir)
+surv_config <- config$survival
 
-surv_cfg <- config$survival
+# Load data
+data_file <- ifelse(is.null(surv_config$data_file), 
+                    ifelse(is.null(config$data_file), "Example_data.csv", config$data_file),
+                    surv_config$data_file)
 
-data_file <- if (!is.null(surv_cfg$data_file)) surv_cfg$data_file else config$data_file
-if (is.null(data_file)) {
-  stop("Specify 'data_file' either at the top level or inside the 'survival' section of the configuration.")
-}
 if (!file.exists(data_file)) {
-  stop("Input data file not found: ", data_file)
+  stop(paste("Data file not found:", data_file))
 }
 
+cat(paste("STEPWISE_LOG:Loading data from:", data_file, "\n"), file = stderr())
 dat <- read.csv(data_file, header = TRUE, stringsAsFactors = FALSE)
+cat(paste("STEPWISE_LOG:Data loaded -", nrow(dat), "samples,", ncol(dat), "columns\n"), file = stderr())
 
-SampleID <- if (!is.null(surv_cfg$sample_id)) surv_cfg$sample_id else "sample"
-Survtime <- surv_cfg$time_variable
-if (is.null(Survtime)) {
-  stop("The 'survival.time_variable' field is required in the configuration file.")
+# Extract parameters from config
+sample_id <- ifelse(is.null(surv_config$sample_id), "sample", surv_config$sample_id)
+Survtime <- ifelse(is.null(surv_config$time_variable), "OS.year", surv_config$time_variable)
+Event <- ifelse(is.null(surv_config$event), "OS", surv_config$event)
+horizon <- ifelse(is.null(surv_config$horizon), 5, as.numeric(surv_config$horizon))
+numSeed <- ifelse(is.null(surv_config$num_seed), 100, as.integer(surv_config$num_seed))
+SplitProp <- ifelse(is.null(surv_config$split_prop), 0.7, as.numeric(surv_config$split_prop))
+Freq <- ifelse(is.null(surv_config$freq), 80, as.integer(surv_config$freq))
+output_dir <- ifelse(is.null(surv_config$output_dir), "results/survival", surv_config$output_dir)
+
+# Handle exclude and include lists
+excvar <- ifelse(is.null(surv_config$exclude) || length(surv_config$exclude) == 0, 
+                 c(""), 
+                 surv_config$exclude)
+if (length(excvar) == 1 && excvar == "") {
+  excvar <- c("")
 }
-Event <- surv_cfg$event
-if (is.null(Event)) {
-  stop("The 'survival.event' field is required in the configuration file.")
+
+fixvar <- ifelse(is.null(surv_config$include) || length(surv_config$include) == 0, 
+                 "", 
+                 surv_config$include)
+if (length(fixvar) == 0 || (length(fixvar) == 1 && fixvar == "")) {
+  fixvar <- ""
 }
 
-non_feature_cols <- unique(c(SampleID, Survtime, Event))
-non_feature_cols <- non_feature_cols[non_feature_cols %in% colnames(dat)]
+# Get feature columns (exclude sample_id, Survtime, and Event)
+exclude_cols <- c(sample_id, Survtime, Event)
 
-totvar <- if (!is.null(surv_cfg$features)) {
-  as.character(unlist(surv_cfg$features))
+# If features are specified in config, use those; otherwise use all columns except excluded ones
+if (!is.null(surv_config$features) && length(surv_config$features) > 0) {
+  totvar <- surv_config$features
+  cat(paste("STEPWISE_LOG:Using", length(totvar), "specified features from config\n"), file = stderr())
 } else {
-  setdiff(colnames(dat), non_feature_cols)
+  totvar <- colnames(dat)[-match(exclude_cols, colnames(dat), nomatch = 0)]
+  cat(paste("STEPWISE_LOG:Using", length(totvar), "features (auto-selected from", ncol(dat), "total columns)\n"), file = stderr())
 }
 
-horizon <- if (!is.null(surv_cfg$horizon)) as.numeric(surv_cfg$horizon) else 5
-numSeed <- if (!is.null(surv_cfg$num_seed)) as.integer(surv_cfg$num_seed) else 100L
-SplitProp <- if (!is.null(surv_cfg$split_prop)) as.numeric(surv_cfg$split_prop) else 0.7
-outdir <- if (!is.null(surv_cfg$output_dir)) surv_cfg$output_dir else "StepSurv"
-excvar <- surv_cfg$exclude
-if (is.null(excvar) || length(excvar) == 0) {
-  excvar <- character(0)
-} else {
-  excvar <- as.character(unlist(excvar))
-  # Remove NA and empty strings
-  excvar <- excvar[!is.na(excvar) & nchar(excvar) > 0]
-}
+# Create output directories
+outcandir <- file.path(output_dir, "ExtCandidat")
+outdir <- file.path(output_dir, "StepSurv")
 
-fixvar <- surv_cfg$include
-if (is.null(fixvar) || length(fixvar) == 0) {
-  fixvar <- character(0)
-} else {
-  fixvar <- as.character(unlist(fixvar))
-  # Remove NA and empty strings
-  fixvar <- fixvar[!is.na(fixvar) & nchar(fixvar) > 0]
-}
+dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)
+dir.create(outcandir, showWarnings = FALSE, recursive = TRUE)
+dir.create(outdir, showWarnings = FALSE, recursive = TRUE)
 
-# Output initial progress to stderr (unbuffered)
-cat("PROGRESS_START:", numSeed, "\n", sep = "", file = stderr())
-cat("STEPWISE_START\n", sep = "", file = stderr())
+############################################################################
+##### Extract candidate gene lists with Freq threshold
+############################################################################
+# Rename columns for consistency
+colnames(dat) <- gsub(paste0("^", Event, "$"), "Event", 
+                      gsub(paste0("^", Survtime, "$"), "Survtime", colnames(dat)), 
+                      ignore.case = TRUE)
 
-Result <- SurvTrainAUCStepwise(totvar, dat, fixvar, excvar, horizon, numSeed, SplitProp, outdir, Survtime, Event)
+cat("STEPWISE_START\n", file = stderr())
+cat(paste("STEPWISE_LOG:Starting candidate gene extraction...\n"), file = stderr())
+cat(paste("STEPWISE_LOG:Total iterations:", numSeed, ", Variables:", length(totvar), ", Frequency threshold:", Freq, "\n"), file = stderr())
+cat(paste("PROGRESS_START:", numSeed, "\n"), file = stderr())
 
-cat("STEPWISE_DONE\n", sep = "", file = stderr())
+# Extract candidate genes
+Candivar <- Extract_CandidGene(dat, numSeed, SplitProp, totvar, outcandir, Freq)
 
-FinalRes <- NULL
-trROCobjList <- tsROCobjList <- vector("list", numSeed)
+cat(paste("STEPWISE_LOG:Candidate gene extraction completed -", length(Candivar), "candidate genes selected\n"), file = stderr())
+# Candivar: Candidate gene lists for variable selection
+############################################################################
 
-for (s in seq_len(numSeed)) {
-  # Output progress to stderr (unbuffered)
-  cat("PROGRESS:", s, "\n", sep = "", file = stderr())
+#####################################################################
+##### Run TrainAUC-based stepwise selection (Outcome: Survival time)
+#####################################################################
+cat(paste("STEPWISE_LOG:Starting stepwise selection with", length(Candivar), "candidate genes\n"), file = stderr())
+Result <- SurvTrainAUCStepwise(Candivar, dat, fixvar, excvar, horizon, numSeed, SplitProp, outdir)
+cat(paste("STEPWISE_LOG:Stepwise selection completed\n"), file = stderr())
 
-  set.seed(s)
-  repeat {
-    trIdx <- createDataPartition(dat[, Event], p = SplitProp, list = FALSE, times = 1)
-    trdat <- dat[trIdx, ]
-    tsdat <- dat[-trIdx, ]
+# Result: Final variable selection result eg. Variable / trainAUC / testAUC
+#####################################################################
 
-    n_tr_0 <- sum(trdat[, Event] == 0)
-    n_tr_1 <- sum(trdat[, Event] == 1)
-    n_ts_0 <- sum(tsdat[, Event] == 0)
-    n_ts_1 <- sum(tsdat[, Event] == 1)
-
-    if (min(n_tr_0, n_tr_1, n_ts_0, n_ts_1) >= 2) break
-  }
-
-  model_formula <- as.formula(paste0("Surv(", Survtime, ",", Event, ") ~ ", as.character(Result[1, 1])))
-  predictors <- strsplit(Result[1, 1], " \\+ ")[[1]]
-  predictors <- gsub(" ", "", predictors)
-  trdat1 <- trdat[complete.cases(trdat[, c(Survtime, Event, predictors)]), c(Survtime, Event, predictors)]
-  tsdat1 <- tsdat[complete.cases(tsdat[, c(Survtime, Event, predictors)]), c(Survtime, Event, predictors)]
-  CoxPHres <- coxph(model_formula, data = trdat1)
-
-  lptr <- predict(CoxPHres, trdat1)
-  trROCobjList[[s]] <- cdROC(stime = trdat1[, Survtime], status = trdat1[, Event], marker = lptr, predict.time = horizon)
-  trauc <- trROCobjList[[s]]$auc
-
-  lpts <- predict(CoxPHres, tsdat1)
-  tsROCobjList[[s]] <- cdROC(stime = tsdat1[, Survtime], status = tsdat1[, Event], marker = lpts, predict.time = horizon)
-  tsauc <- tsROCobjList[[s]]$auc
-  FinalRes <- rbind(FinalRes, c(s, trauc, tsauc))
-}
-
-FinalRes <- as.data.frame(FinalRes)
-colnames(FinalRes) <- c("iteration", "train_auc", "test_auc")
-FinalRes$iteration <- as.integer(FinalRes$iteration)
-FinalRes$train_auc <- as.numeric(FinalRes$train_auc)
-FinalRes$test_auc <- as.numeric(FinalRes$test_auc)
-
-mean_train_auc <- round(mean(FinalRes$train_auc, na.rm = TRUE), 4)
-mean_test_auc <- round(mean(FinalRes$test_auc, na.rm = TRUE), 4)
-std_test_auc <- round(sd(FinalRes$test_auc, na.rm = TRUE), 4)
-
-MeantsTPR <- rowMeans(cbind(sapply(seq_len(numSeed), function(v) tsROCobjList[[v]]$TPR)), na.rm = TRUE)
-MeantsTNR <- rowMeans(cbind(sapply(seq_len(numSeed), function(v) tsROCobjList[[v]]$TNR)), na.rm = TRUE)
-MeantrTPR <- rowMeans(cbind(sapply(seq_len(numSeed), function(v) trROCobjList[[v]]$TPR)), na.rm = TRUE)
-MeantrTNR <- rowMeans(cbind(sapply(seq_len(numSeed), function(v) trROCobjList[[v]]$TNR)), na.rm = TRUE)
-
-if (!dir.exists(outdir)) {
-  dir.create(outdir, recursive = TRUE)
-}
-
-plot_survival_roc <- function() {
-  par(mfrow = c(1, 2))
-  plot(1 - trROCobjList[[1]]$TNR, trROCobjList[[1]]$TPR, col = 1, type = "l", lwd = 1, lty = 2,
-       cex.axis = 1.5, xlab = "1-Specificity", ylab = "Sensitivity", main = "[ROC curve] Training set",
-       cex.main = 1.8, cex.lab = 1.5)
-  invisible(sapply(seq(2, numSeed), function(v) lines(1 - trROCobjList[[v]]$TNR, trROCobjList[[v]]$TPR,
-                                                     col = v, type = "l", lwd = 1, lty = 2)))
-  lines(1 - MeantrTNR, MeantrTPR, col = "midnightblue", type = "l", lwd = 5)
-  legend("bottomright", legend = paste0("Mean AUC:\n", mean_train_auc, ' ± ',
-                                        round(sd(FinalRes$train_auc, na.rm = TRUE), 4)), lwd = 5, cex = 1.5,
-         col = "midnightblue")
-
-  plot(1 - tsROCobjList[[1]]$TNR, tsROCobjList[[1]]$TPR, col = 1, type = "l", lwd = 1, lty = 2,
-       cex.axis = 1.5, xlab = "1-Specificity", ylab = "Sensitivity", main = "[ROC curve] Test set",
-       cex.main = 1.8, cex.lab = 1.5)
-  invisible(sapply(seq(2, numSeed), function(v) lines(1 - tsROCobjList[[v]]$TNR, tsROCobjList[[v]]$TPR,
-                                                     col = v, type = "l", lwd = 1, lty = 2)))
-  lines(1 - MeantsTNR, MeantsTPR, col = 1, type = "l", lwd = 5)
-  legend("bottomright", legend = paste0("Mean AUC:\n", mean_test_auc, ' ± ', std_test_auc), lwd = 5, cex = 1.5)
-}
-
-save_survival_roc <- function(path, device) {
-  if (device == "png") {
-    png(path, width = 800, height = 400)
-  } else if (device == "tiff") {
-    tiff(path, width = 8, height = 4, units = "in", res = 300, compression = "lzw")
-  } else {
-    svg(path, width = 11, height = 5)
-  }
-  on.exit(dev.off(), add = TRUE)
-  plot_survival_roc()
-}
-
-save_survival_roc(file.path(outdir, "ROCcurve.png"), "png")
-save_survival_roc(file.path(outdir, "ROCcurve.tiff"), "tiff")
-save_survival_roc(file.path(outdir, "ROCcurve.svg"), "svg")
-
-feature_cols <- setdiff(colnames(dat), unique(c(SampleID, Survtime, Event)))
-scaled_features <- scale(dat[, feature_cols, drop = FALSE])
-Scaledat <- cbind(dat[, c(SampleID, Survtime, Event)], as.data.frame(scaled_features))
-
-mod <- coxph(as.formula(paste0("Surv(", Survtime, ",", Event, ") ~ ", as.character(Result[1, 1]))), data = Scaledat)
-ce <- function(model.obj) {
-  extract <- summary(get(model.obj))$coefficients[, c(1, 3)]
-  data.frame(extract, vars = row.names(extract), model = model.obj)
-}
-coefs <- ce("mod")
-names(coefs)[2] <- "se"
-
-importance_plot <- ggplot(coefs, aes(vars, coef)) +
-  geom_hline(yintercept = 0, lty = 2, lwd = 1, colour = "grey50") +
-  geom_errorbar(aes(ymin = coef - se, ymax = coef + se, colour = vars), lwd = 1, width = 0) +
-  geom_point(size = 3, aes(colour = vars)) +
-  geom_text(aes(label = sprintf("%.2f", coef), colour = vars), hjust = 0.4, vjust = -1, size = 5, fontface = "bold") +
-  coord_flip() +
-  guides(colour = "none") +
-  labs(x = "Predictors", y = "Standardized Coefficient") +
-  theme_minimal() +
-  theme(axis.text = element_text(size = 15, face = "bold"),
-        axis.title = element_text(size = 15, face = "bold"),
-        strip.text = element_text(size = 15, face = "bold"))
-
-ggsave(filename = file.path(outdir, "Variable_Importance.png"), plot = importance_plot,
-       width = 8, height = 5, dpi = 300)
-ggsave(filename = file.path(outdir, "Variable_Importance.tiff"), plot = importance_plot,
-       width = 8, height = 5, dpi = 300, device = "tiff", compression = "lzw")
-ggsave(filename = file.path(outdir, "Variable_Importance.svg"), plot = importance_plot,
-       width = 8, height = 5, dpi = 300, device = "svg")
-
-write.csv(FinalRes, file.path(outdir, "auc_iterations.csv"), row.names = FALSE)
-
-cat("Survival analysis complete.\n")
-cat("Mean training time-dependent AUC: ", mean_train_auc, "\n", sep = "")
-cat("Mean test time-dependent AUC: ", mean_test_auc, " (SD = ", std_test_auc, ")\n", sep = "")
-cat("Results saved to: ", normalizePath(outdir), "\n", sep = "")
+#####################################################################
+##### Plot ROC curves and Variable Importance 
+#####################################################################
+cat(paste("STEPWISE_LOG:Generating plots...\n"), file = stderr())
+# Change to output directory for saving plots
+old_dir <- getwd()
+setwd(output_dir)
+PlotSurvROC(dat, numSeed, SplitProp, Result, horizon)    # Plot ROC curves from repetitions 
+cat(paste("STEPWISE_LOG:ROC curve plot saved\n"), file = stderr())
+PlotSurVarImp(dat, Result)                      # Plot Variable Importance 
+cat(paste("STEPWISE_LOG:Variable importance plot saved\n"), file = stderr())
+PlotSurvKM(dat, numSeed, SplitProp, Result, horizon)  # Kaplan-Meier survival curves
+cat(paste("STEPWISE_LOG:Kaplan-Meier plot saved\n"), file = stderr())
+PlotSurvTimeAUC(dat, numSeed, SplitProp, Result)  # Time-dependent AUC
+cat(paste("STEPWISE_LOG:Time-dependent AUC plot saved\n"), file = stderr())
+PlotSurvRiskDist(dat, Result)  # Risk score distribution
+cat(paste("STEPWISE_LOG:Risk distribution plots saved\n"), file = stderr())
+PlotSurvStepwiseProcess(outdir)  # Stepwise selection process
+cat(paste("STEPWISE_LOG:Stepwise process plot saved\n"), file = stderr())
+setwd(old_dir)  # Restore original directory
+cat(paste("STEPWISE_LOG:Analysis complete!\n"), file = stderr())
+#####################################################################
