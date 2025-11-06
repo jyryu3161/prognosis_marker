@@ -46,13 +46,7 @@ nature_colors <- list(
 )
 
 # Helper to create consistent tertile-based risk groups
-#
-# ==============================================================================
-#  [FIXED FUNCTION] assign_risk_groups
-#  - 'else' 블록(수동 할당)의 로직을 n_valid < n_labels (e.g., 2 < 3) 
-#    엣지 케이스를 올바르게 처리하도록 수정했습니다.
-#  - 기존 로직은 이 경우 모든 샘플을 'High' 그룹에 할당했습니다.
-# ==============================================================================
+# (이전 수정에서 이미 수정된 버전)
 assign_risk_groups <- function(scores, labels = c("Low", "Medium", "High"), log_file = NULL) {
   if (length(scores) == 0 || all(is.na(scores))) {
     return(factor(rep(NA_character_, length(scores)), levels = labels))
@@ -100,9 +94,6 @@ assign_risk_groups <- function(scores, labels = c("Low", "Medium", "High"), log_
       ordered_idx <- valid_idx[order(scores[valid_idx])]
       n_labels <- length(labels)
       
-      # [FIX] 새로운 그룹 크기 계산 로직
-      # n_valid %/% n_labels로 기본 크기를 계산하고,
-      # n_valid %% n_labels로 나머지(remainder)를 계산하여 앞 그룹들에 분배합니다.
       base_size <- floor(n_valid / n_labels)
       rem <- n_valid %% n_labels
       
@@ -134,8 +125,6 @@ assign_risk_groups <- function(scores, labels = c("Low", "Medium", "High"), log_
              current_idx <- end + 1
           }
         }
-        # group_n이 0이면 (e.g., n_valid=2, n_labels=3 -> [1, 1, 0]),
-        # 해당 그룹('High')은 0개의 샘플을 할당받고 current_idx는 전진하지 않습니다.
       }
     }
 
@@ -149,66 +138,43 @@ assign_risk_groups <- function(scores, labels = c("Low", "Medium", "High"), log_
   }
 }
 
-# Helper function to save plots in multiple formats (TIFF 300 DPI and SVG)
+# Helper function to save plots
 save_plot <- function(plot_obj, filename_base, width_inch = 7, height_inch = 5, is_ggplot = TRUE) {
-  # Create figures directory if it doesn't exist
   if (!dir.exists("figures")) {
     dir.create("figures", recursive = TRUE)
   }
-  
   filename_base <- file.path("figures", filename_base)
   
   if (is_ggplot) {
-    # Save as TIFF 300 DPI
     tryCatch({
-      tiff(filename = paste0(filename_base, ".tiff"), 
-           width = width_inch * 300, height = height_inch * 300, 
-           units = "px", res = 300, compression = "lzw")
+      tiff(filename = paste0(filename_base, ".tiff"), width = width_inch * 300, height = height_inch * 300, units = "px", res = 300, compression = "lzw")
       print(plot_obj)
       dev.off()
-    }, error = function(e) {
-      cat(paste("STEPWISE_LOG:Warning - Failed to save TIFF:", e$message, "\n"), file = stderr())
-    })
+    }, error = function(e) { cat(paste("STEPWISE_LOG:Warning - Failed to save TIFF:", e$message, "\n"), file = stderr()) })
     
-    # Save as SVG (try svglite first, fallback to base svg)
     tryCatch({
       if (requireNamespace("svglite", quietly = TRUE)) {
-        svglite::svglite(file = paste0(filename_base, ".svg"), 
-                        width = width_inch, height = height_inch)
+        svglite::svglite(file = paste0(filename_base, ".svg"), width = width_inch, height = height_inch)
         print(plot_obj)
         dev.off()
       } else {
-        # Fallback to base svg
-        svg(filename = paste0(filename_base, ".svg"), 
-            width = width_inch, height = height_inch)
+        svg(filename = paste0(filename_base, ".svg"), width = width_inch, height = height_inch)
         print(plot_obj)
         dev.off()
       }
-    }, error = function(e) {
-      cat(paste("STEPWISE_LOG:Warning - Failed to save SVG:", e$message, "\n"), file = stderr())
-    })
+    }, error = function(e) { cat(paste("STEPWISE_LOG:Warning - Failed to save SVG:", e$message, "\n"), file = stderr()) })
   } else {
-    # For base R plots
-    # Save as TIFF 300 DPI
     tryCatch({
-      tiff(filename = paste0(filename_base, ".tiff"), 
-           width = width_inch * 300, height = height_inch * 300, 
-           units = "px", res = 300, compression = "lzw")
+      tiff(filename = paste0(filename_base, ".tiff"), width = width_inch * 300, height = height_inch * 300, units = "px", res = 300, compression = "lzw")
       print(plot_obj)
       dev.off()
-    }, error = function(e) {
-      cat(paste("STEPWISE_LOG:Warning - Failed to save TIFF:", e$message, "\n"), file = stderr())
-    })
+    }, error = function(e) { cat(paste("STEPWISE_LOG:Warning - Failed to save TIFF:", e$message, "\n"), file = stderr()) })
     
-    # Save as SVG
     tryCatch({
-      svg(filename = paste0(filename_base, ".svg"), 
-          width = width_inch, height = height_inch)
+      svg(filename = paste0(filename_base, ".svg"), width = width_inch, height = height_inch)
       print(plot_obj)
       dev.off()
-    }, error = function(e) {
-      cat(paste("STEPWISE_LOG:Warning - Failed to save SVG:", e$message, "\n"), file = stderr())
-    })
+    }, error = function(e) { cat(paste("STEPWISE_LOG:Warning - Failed to save SVG:", e$message, "\n"), file = stderr()) })
   }
 }
 
@@ -237,35 +203,26 @@ Extract_CandidGene <- function(dat,numSeed,SplitProp,totvar,outcandir,Freq){
       var_name <- colnames(trdat)[j]
       var_count <- var_count + 1
       
-      # Print progress every 50 variables
       if (var_count %% 50 == 0) {
         cat(paste("STEPWISE_LOG:Iteration", s, "- Processing variable", var_count, "of", total_vars, "\n"), file = stderr())
       }
       
-      # Skip if variable has NA or constant values
       if (length(unique(trdat[,var_name])) <= 1 || any(is.na(trdat[,var_name]))){
         next
       }
       tryCatch({
         f=as.formula(paste('Surv(Survtime,Event) ~ ',var_name,collapse = ''))
-        # Suppress warnings for this model fit
         suppressWarnings({
           CoxPHres<-coxph(f,data = trdat)
         })
-        # Check if model converged properly
         if (!is.null(CoxPHres) && !is.null(summary(CoxPHres)$coef)){
           coef_summary <- summary(CoxPHres)$coef
-          # Check if coefficient exists and is finite (row 1 exists and has at least 5 columns)
           if (nrow(coef_summary) >= 1 && ncol(coef_summary) >= 5 && all(is.finite(coef_summary[1,c(1:3,5)]))){
             tmpres <- rbind(tmpres,c(var_name,coef_summary[1,c(1:3,5)]))
             valid_var_count <- valid_var_count + 1
           }
         }
-      }, error = function(e) {
-        # Skip this variable if model fitting fails
-      }, warning = function(w) {
-        # Suppress warnings
-      })
+      }, error = function(e) {}, warning = function(w) {})
     }
     if(s==1){
       dir.create(outcandir)
@@ -329,16 +286,13 @@ Survforward_step <- function(dat, candid, fixvar, horizon, numSeed,SplitProp){
       f=as.formula(paste('Surv(Survtime,Event) ~ ',paste(fixvar,collapse = ' + '),' + ',g,collapse = ''))
       trdat1 <- trdat[complete.cases(trdat[,c('Survtime','Event',setdiff(c(fixvar,g),''))]),c('Survtime','Event',setdiff(c(fixvar,g),''))]
       tsdat1 <- tsdat[complete.cases(tsdat[,c('Survtime','Event',setdiff(c(fixvar,g),''))]),c('Survtime','Event',setdiff(c(fixvar,g),''))]
-      # Skip if insufficient data
       if (nrow(trdat1) < 2 || nrow(tsdat1) < 2) {
         next
       }
       tryCatch({
-        # Suppress warnings for model fitting
         suppressWarnings({
           CoxPHres<-coxph(f,data = trdat1)
         })
-        # Check if model converged properly
         if (is.null(CoxPHres) || is.null(summary(CoxPHres)$coef)) {
           next
         }
@@ -360,15 +314,10 @@ Survforward_step <- function(dat, candid, fixvar, horizon, numSeed,SplitProp){
         } else{
           tsauc <- NA
         }
-        # Convert to numeric and handle NA
         trauc <- ifelse(is.na(trauc), 0, as.numeric(trauc))
         tsauc <- ifelse(is.na(tsauc), 0, as.numeric(tsauc))
         forward_ls <- rbind(forward_ls,c(s,paste(c(fixvar,g),collapse = ' + '),trauc,tsauc))
-      }, error = function(e) {
-        # Skip this variable if model fitting fails
-      }, warning = function(w) {
-        # Suppress warnings
-      })
+      }, error = function(e) {}, warning = function(w) {})
     }
   }
   forward_ls1 <- data.frame(forward_ls)
@@ -404,16 +353,13 @@ Survbackward_step <- function(dat, backcandid, fixvar, horizon, numSeed, SplitPr
       f=as.formula(paste('Surv(Survtime,Event) ~ ',paste(setdiff(fixvar,g),collapse = ' + '),collapse = ''))
       trdat1 <- trdat[complete.cases(trdat[,c('Survtime','Event',setdiff(fixvar,g))]),]
       tsdat1 <- tsdat[complete.cases(tsdat[,c('Survtime','Event',setdiff(fixvar,g))]),]
-      # Skip if insufficient data
       if (nrow(trdat1) < 2 || nrow(tsdat1) < 2) {
         next
       }
       tryCatch({
-        # Suppress warnings for model fitting
         suppressWarnings({
           CoxPHres<-coxph(f,data = trdat1)
         })
-        # Check if model converged properly
         if (is.null(CoxPHres) || is.null(summary(CoxPHres)$coef)) {
           next
         }
@@ -435,15 +381,10 @@ Survbackward_step <- function(dat, backcandid, fixvar, horizon, numSeed, SplitPr
         } else{
           tsauc <- NA
         }
-        # Convert to numeric and handle NA
         trauc <- ifelse(is.na(trauc), 0, as.numeric(trauc))
         tsauc <- ifelse(is.na(tsauc), 0, as.numeric(tsauc))
         backward_ls <- rbind(backward_ls,c(s,paste(setdiff(fixvar,g),collapse = ' + '),trauc,tsauc))
-      }, error = function(e) {
-        # Skip this variable if model fitting fails
-      }, warning = function(w) {
-        # Suppress warnings
-      })
+      }, error = function(e) {}, warning = function(w) {})
     }
   }
   backward_ls1 <- data.frame(backward_ls)
@@ -610,139 +551,64 @@ PlotSurvROC <- function(dat,numSeed,SplitProp,Result,horizon){
       trROCobjList[[valid_iterations]] <- trROCobj
       tsROCobjList[[valid_iterations]] <- tsROCobj
       FinalRes <- rbind(FinalRes,c(s,trauc,tsauc))
-    }, error = function(e) {
-      # Skip this iteration if there's an error
-    }, warning = function(w) {
-      # Suppress warnings
-    })
+    }, error = function(e) {}, warning = function(w) {})
   }
   
   if (valid_iterations == 0) {
     stop("No valid iterations for ROC plotting")
   }
   
-  # Convert ROC values to numeric matrices
-  tsTPR_list <- lapply(seq(valid_iterations), function(v) {
-    if (is.null(tsROCobjList[[v]])) return(NULL)
-    vals <- tsROCobjList[[v]]$TPR
-    if (is.null(vals)) return(NULL)
-    as.numeric(vals)
-  })
-  tsTNR_list <- lapply(seq(valid_iterations), function(v) {
-    if (is.null(tsROCobjList[[v]])) return(NULL)
-    vals <- tsROCobjList[[v]]$TNR
-    if (is.null(vals)) return(NULL)
-    as.numeric(vals)
-  })
-  trTPR_list <- lapply(seq(valid_iterations), function(v) {
-    if (is.null(trROCobjList[[v]])) return(NULL)
-    vals <- trROCobjList[[v]]$TPR
-    if (is.null(vals)) return(NULL)
-    as.numeric(vals)
-  })
-  trTNR_list <- lapply(seq(valid_iterations), function(v) {
-    if (is.null(trROCobjList[[v]])) return(NULL)
-    vals <- trROCobjList[[v]]$TNR
-    if (is.null(vals)) return(NULL)
-    as.numeric(vals)
-  })
+  tsTPR_list <- lapply(seq(valid_iterations), function(v) { if (is.null(tsROCobjList[[v]])) return(NULL); as.numeric(tsROCobjList[[v]]$TPR) })
+  tsTNR_list <- lapply(seq(valid_iterations), function(v) { if (is.null(tsROCobjList[[v]])) return(NULL); as.numeric(tsROCobjList[[v]]$TNR) })
+  trTPR_list <- lapply(seq(valid_iterations), function(v) { if (is.null(trROCobjList[[v]])) return(NULL); as.numeric(trROCobjList[[v]]$TPR) })
+  trTNR_list <- lapply(seq(valid_iterations), function(v) { if (is.null(trROCobjList[[v]])) return(NULL); as.numeric(trROCobjList[[v]]$TNR) })
   
-  # Find maximum length
-  all_lengths <- c(
-    sapply(tsTPR_list, function(x) if(is.null(x)) 0 else length(x)),
-    sapply(tsTNR_list, function(x) if(is.null(x)) 0 else length(x)),
-    sapply(trTPR_list, function(x) if(is.null(x)) 0 else length(x)),
-    sapply(trTNR_list, function(x) if(is.null(x)) 0 else length(x))
-  )
-  max_len <- max(all_lengths, na.rm = TRUE)
-  if (is.na(max_len) || max_len == 0) {
-    max_len <- 100  # Default length
-  }
+  all_lengths <- c(sapply(tsTPR_list, length), sapply(tsTNR_list, length), sapply(trTPR_list, length), sapply(trTNR_list, length))
+  max_len <- max(all_lengths[all_lengths > 0], 100, na.rm = TRUE)
   
-  # Pad and convert to matrices
-  tsTPR_mat <- do.call(cbind, lapply(tsTPR_list, function(x) {
-    if (is.null(x)) return(rep(NA, max_len))
-    c(x, rep(NA, max_len - length(x)))
-  }))
-  tsTNR_mat <- do.call(cbind, lapply(tsTNR_list, function(x) {
-    if (is.null(x)) return(rep(NA, max_len))
-    c(x, rep(NA, max_len - length(x)))
-  }))
-  trTPR_mat <- do.call(cbind, lapply(trTPR_list, function(x) {
-    if (is.null(x)) return(rep(NA, max_len))
-    c(x, rep(NA, max_len - length(x)))
-  }))
-  trTNR_mat <- do.call(cbind, lapply(trTNR_list, function(x) {
-    if (is.null(x)) return(rep(NA, max_len))
-    c(x, rep(NA, max_len - length(x)))
-  }))
+  tsTPR_mat <- do.call(cbind, lapply(tsTPR_list, function(x) { if (is.null(x)) return(rep(NA, max_len)); c(x, rep(NA, max_len - length(x))) }))
+  tsTNR_mat <- do.call(cbind, lapply(tsTNR_list, function(x) { if (is.null(x)) return(rep(NA, max_len)); c(x, rep(NA, max_len - length(x))) }))
+  trTPR_mat <- do.call(cbind, lapply(trTPR_list, function(x) { if (is.null(x)) return(rep(NA, max_len)); c(x, rep(NA, max_len - length(x))) }))
+  trTNR_mat <- do.call(cbind, lapply(trTNR_list, function(x) { if (is.null(x)) return(rep(NA, max_len)); c(x, rep(NA, max_len - length(x))) }))
   
   MeantsTPR <- rowMeans(tsTPR_mat, na.rm = TRUE)
   MeantsTNR <- rowMeans(tsTNR_mat, na.rm = TRUE)
   MeantrTPR <- rowMeans(trTPR_mat, na.rm = TRUE)
   MeantrTNR <- rowMeans(trTNR_mat, na.rm = TRUE)
   
-  # Remove NA values
   MeantsTPR <- MeantsTPR[!is.na(MeantsTPR)]
   MeantsTNR <- MeantsTNR[!is.na(MeantsTNR)]
   MeantrTPR <- MeantrTPR[!is.na(MeantrTPR)]
   MeantrTNR <- MeantrTNR[!is.na(MeantrTNR)]
   
-  # Create ROC plot function
   plot_roc_func <- function() {
     par(mfrow=c(1,2), family = "Helvetica", bg = "white")
     par(mar = c(4.5, 4.5, 3, 1))
     
-    # Plot training ROC
     if (valid_iterations > 0 && !is.null(trROCobjList[[1]])) {
       plot(1-trROCobjList[[1]]$TNR,trROCobjList[[1]]$TPR,col="gray70",type='l',lwd=0.8,lty=2,cex.axis=1,cex.lab=1.1,font.lab=2,xlab='1-Specificity',ylab='Sensitivity',main='[ROC curve] Training set',cex.main=1.2,font.main=2)
-      if (valid_iterations > 1) {
-        sapply(seq(2,valid_iterations),function(v) {
-          if (!is.null(trROCobjList[[v]])) {
-            lines(1-trROCobjList[[v]]$TNR,trROCobjList[[v]]$TPR,col="gray70",type='l',lwd=0.8,lty=2)
-          }
-        })
-      }
-      if (length(MeantrTNR) > 0 && length(MeantrTPR) > 0) {
-        lines(1-MeantrTNR,MeantrTPR,col=nature_colors$blue,type='l',lwd=1)
-      }
-      FinalRes_df <- data.frame(FinalRes)
-      FinalRes_df[,2] <- as.numeric(FinalRes_df[,2])
-      FinalRes_df[,3] <- as.numeric(FinalRes_df[,3])
+      if (valid_iterations > 1) { sapply(seq(2,valid_iterations),function(v) { if (!is.null(trROCobjList[[v]])) { lines(1-trROCobjList[[v]]$TNR,trROCobjList[[v]]$TPR,col="gray70",type='l',lwd=0.8,lty=2) } }) }
+      if (length(MeantrTNR) > 0 && length(MeantrTPR) > 0) { lines(1-MeantrTNR,MeantrTPR,col=nature_colors$blue,type='l',lwd=1) }
+      FinalRes_df <- data.frame(FinalRes); FinalRes_df[,2] <- as.numeric(FinalRes_df[,2]); FinalRes_df[,3] <- as.numeric(FinalRes_df[,3])
       legend('bottomright',legend = paste0('Mean AUC:\n',round(mean(FinalRes_df[,2],na.rm = T),3),' ± ',round(sd(FinalRes_df[,2],na.rm = T),3)),lwd=1,cex=1,col = nature_colors$blue, box.lwd=0.8)
     }
     
-    # Plot test ROC
     if (valid_iterations > 0 && !is.null(tsROCobjList[[1]])) {
       plot(1-tsROCobjList[[1]]$TNR,tsROCobjList[[1]]$TPR,col="gray70",type='l',lwd=0.8,lty=2,cex.axis=1,cex.lab=1.1,font.lab=2,xlab='1-Specificity',ylab='Sensitivity',main='[ROC curve] Test set',cex.main=1.2,font.main=2)
-      if (valid_iterations > 1) {
-        sapply(seq(2,valid_iterations),function(v) {
-          if (!is.null(tsROCobjList[[v]])) {
-            lines(1-tsROCobjList[[v]]$TNR,tsROCobjList[[v]]$TPR,col="gray70",type='l',lwd=0.8,lty=2)
-          }
-        })
-      }
-      if (length(MeantsTNR) > 0 && length(MeantsTPR) > 0) {
-        lines(1-MeantsTNR,MeantsTPR,col=nature_colors$red,type='l',lwd=1)
-      }
-      FinalRes_df <- data.frame(FinalRes)
-      FinalRes_df[,2] <- as.numeric(FinalRes_df[,2])
-      FinalRes_df[,3] <- as.numeric(FinalRes_df[,3])
+      if (valid_iterations > 1) { sapply(seq(2,valid_iterations),function(v) { if (!is.null(tsROCobjList[[v]])) { lines(1-tsROCobjList[[v]]$TNR,tsROCobjList[[v]]$TPR,col="gray70",type='l',lwd=0.8,lty=2) } }) }
+      if (length(MeantsTNR) > 0 && length(MeantsTPR) > 0) { lines(1-MeantsTNR,MeantsTPR,col=nature_colors$red,type='l',lwd=1) }
+      FinalRes_df <- data.frame(FinalRes); FinalRes_df[,2] <- as.numeric(FinalRes_df[,2]); FinalRes_df[,3] <- as.numeric(FinalRes_df[,3])
       legend('bottomright',legend = paste0('Mean AUC:\n',round(mean(FinalRes_df[,3],na.rm = T),3),' ± ',round(sd(FinalRes_df[,3],na.rm = T),3)),lwd=1,cex=1,col = nature_colors$red, box.lwd=0.8)
     }
   }
   
-  # Save as TIFF
   if (!dir.exists("figures")) dir.create("figures", recursive = TRUE)
   tryCatch({
     tiff(filename = 'figures/Surv_ROCcurve.tiff', width = 7*300, height = 3.5*300, units = "px", res = 300, compression = "lzw")
     plot_roc_func()
     dev.off()
-  }, error = function(e) {
-    cat(paste("STEPWISE_LOG:Warning - Failed to save ROC TIFF:", e$message, "\n"), file = stderr())
-  })
+  }, error = function(e) { cat(paste("STEPWISE_LOG:Warning - Failed to save ROC TIFF:", e$message, "\n"), file = stderr()) })
   
-  # Save as SVG
   tryCatch({
     if (requireNamespace("svglite", quietly = TRUE)) {
       svglite::svglite(file = 'figures/Surv_ROCcurve.svg', width = 7, height = 3.5)
@@ -753,9 +619,7 @@ PlotSurvROC <- function(dat,numSeed,SplitProp,Result,horizon){
       plot_roc_func()
       dev.off()
     }
-  }, error = function(e) {
-    cat(paste("STEPWISE_LOG:Warning - Failed to save ROC SVG:", e$message, "\n"), file = stderr())
-  })
+  }, error = function(e) { cat(paste("STEPWISE_LOG:Warning - Failed to save ROC SVG:", e$message, "\n"), file = stderr()) })
 }
 
 PlotSurVarImp <- function(dat,Result){
@@ -785,11 +649,11 @@ PlotSurVarImp <- function(dat,Result){
 # Kaplan-Meier Survival Curves by Risk Groups
 #
 # ==============================================================================
-#  [IMPROVED FUNCTION] PlotSurvKM
-#  - 'color_map'을 모든 그룹(Low, Medium, High)에 대해 정적으로 정의합니다.
-#  - 'plot_data$strata'를 명시적으로 factor로 변환합니다.
-#  - 'scale_color_manual'에 'limits'와 'drop = FALSE'를 추가하여
-#    데이터가 없는 그룹도 범례(legend)에 표시되도록 합니다.
+#  [FINAL FIX] PlotSurvKM
+#  - 0건의 이벤트를 가진 그룹(e.g., Low, Medium)을 식별합니다.
+#  - 모든 그룹에 대해 (time=0, surv=1.0) 시작점을 강제로 추가합니다.
+#  - 0건 이벤트 그룹에 대해 (time=max_time, surv=1.0) 종료점을 강제로 추가하여
+#    수평선이 그려지도록 합니다.
 # ==============================================================================
 PlotSurvKM <- function(dat, numSeed, SplitProp, Result, horizon) {
   # Create debug log file
@@ -817,16 +681,9 @@ PlotSurvKM <- function(dat, numSeed, SplitProp, Result, horizon) {
   }
 
   write(paste("Cox model fitted successfully"), file = log_file, append = TRUE)
-
   risk_scores <- predict(mod, newdata = Scaledat)
-
-  write(paste("\n=== Risk Scores ==="), file = log_file, append = TRUE)
-  write(paste("Total risk scores:", length(risk_scores)), file = log_file, append = TRUE)
-  write(paste("NA risk scores:", sum(is.na(risk_scores))), file = log_file, append = TRUE)
-
   valid_idx <- which(!is.na(risk_scores) & !is.na(dat$Survtime) & !is.na(dat$Event))
-  write(paste("Valid samples after filtering:", length(valid_idx)), file = log_file, append = TRUE)
-
+  
   if (length(valid_idx) < 2) {
     write("ERROR: Insufficient valid samples", file = log_file, append = TRUE)
     cat("STEPWISE_LOG:Kaplan-Meier plot skipped - insufficient valid samples\n", file = stderr())
@@ -834,71 +691,36 @@ PlotSurvKM <- function(dat, numSeed, SplitProp, Result, horizon) {
   }
 
   risk_scores_valid <- risk_scores[valid_idx]
-  write(paste("Risk score range:", min(risk_scores_valid, na.rm=TRUE), "to", max(risk_scores_valid, na.rm=TRUE)), file = log_file, append = TRUE)
-  write(paste("Risk score mean:", mean(risk_scores_valid, na.rm=TRUE), "SD:", sd(risk_scores_valid, na.rm=TRUE)), file = log_file, append = TRUE)
-
-  # Summary statistics
-  write(paste("\n=== Risk Score Summary ==="), file = log_file, append = TRUE)
-  write(paste(capture.output(summary(risk_scores_valid)), collapse="\n"), file = log_file, append = TRUE)
-
-  # Debug: print risk score range
-  cat(paste("STEPWISE_LOG:Risk scores range:", min(risk_scores_valid, na.rm=TRUE), "to", max(risk_scores_valid, na.rm=TRUE), "\n"), file = stderr())
-  cat(paste("STEPWISE_LOG:Number of valid risk scores:", length(risk_scores_valid), "\n"), file = stderr())
-
-  # Assign risk groups with logging
   base_groups <- assign_risk_groups(risk_scores_valid, log_file = log_file)
-
-  write(paste("\n=== Risk Groups Created ==="), file = log_file, append = TRUE)
-  write(paste("Base groups distribution:"), file = log_file, append = TRUE)
-  tbl_base <- table(base_groups, useNA = "always")
-  write(paste(capture.output(print(tbl_base)), collapse="\n"), file = log_file, append = TRUE)
-
-  # Debug: check base_groups distribution immediately after creation
+  
   cat(paste("STEPWISE_LOG:Base groups distribution:\n"), file = stderr())
   print(table(base_groups, useNA = "always"), file = stderr())
 
-  # Create full risk group labels
   risk_groups <- factor(paste(base_groups, "Risk"),
                         levels = paste(c("Low", "Medium", "High"), "Risk"))
-
-  write(paste("\n=== Risk Groups with Labels ==="), file = log_file, append = TRUE)
-  tbl_risk <- table(risk_groups, useNA = "always")
-  write(paste(capture.output(print(tbl_risk)), collapse="\n"), file = log_file, append = TRUE)
-
-  # Debug: check risk_groups after adding "Risk" suffix
-  cat(paste("STEPWEISE_LOG:Risk groups after factor creation:\n"), file = stderr())
+  
+  cat(paste("STEPWISE_LOG:Risk groups after factor creation:\n"), file = stderr())
   print(table(risk_groups, useNA = "always"), file = stderr())
 
   valid_group_idx <- which(!is.na(risk_groups))
-  write(paste("Valid group assignments:", length(valid_group_idx)), file = log_file, append = TRUE)
-
+  
   if (length(valid_group_idx) < 2) {
     write("ERROR: Insufficient risk group assignments", file = log_file, append = TRUE)
     cat("STEPWISE_LOG:Kaplan-Meier plot skipped - insufficient risk group assignments\n", file = stderr())
     return(NULL)
   }
-
+  
   # Filter data to valid groups only
   risk_groups_filtered <- risk_groups[valid_group_idx]
   surv_time <- dat$Survtime[valid_idx][valid_group_idx]
   surv_event <- dat$Event[valid_idx][valid_group_idx]
-
-  # Verify we have at least 2 groups with samples
+  
   group_counts <- table(risk_groups_filtered)
-  write(paste("\n=== Final Group Counts ==="), file = log_file, append = TRUE)
-  write(paste(capture.output(print(group_counts)), collapse="\n"), file = log_file, append = TRUE)
-  write(paste("Number of groups:", length(group_counts)), file = log_file, append = TRUE)
-  write(paste("Total samples in groups:", sum(group_counts)), file = log_file, append = TRUE)
-
   cat(paste("STEPWISE_LOG:Kaplan-Meier groups:", paste(names(group_counts), "=", group_counts, collapse=", "), "\n"), file = stderr())
-  cat(paste("STEPWISE_LOG:Total samples:", length(risk_groups_filtered), "\n"), file = stderr())
 
-  # [FIX] 여기서는 1개 그룹만 있어도 일단 진행합니다. (디버깅 목적)
-  # ggplot에서 어차피 1개 그룹만 그릴 것입니다.
   if (sum(group_counts) < 2) {
     write(paste("ERROR: Only", sum(group_counts), "sample(s) found, need at least 2"), file = log_file, append = TRUE)
-    cat(paste("STEPWISE_LOG:Kaplan-Meier plot skipped - insufficient samples:",
-              paste(names(group_counts), "=", group_counts, collapse=", "), "\n"), file = stderr())
+    cat(paste("STEPWISE_LOG:Kaplan-Meier plot skipped - insufficient samples\n"), file = stderr())
     return(NULL)
   }
 
@@ -908,9 +730,8 @@ PlotSurvKM <- function(dat, numSeed, SplitProp, Result, horizon) {
     risk_group = risk_groups_filtered
   )
   
-  # [FIX] strata가 비어있는지 확인하기 위해 factor 레벨을 명시적으로 설정
-  surv_data$risk_group <- factor(surv_data$risk_group, 
-                                 levels = c("Low Risk", "Medium Risk", "High Risk"))
+  all_group_levels <- c("Low Risk", "Medium Risk", "High Risk")
+  surv_data$risk_group <- factor(surv_data$risk_group, levels = all_group_levels)
 
   write(paste("\n=== Survival Data ==="), file = log_file, append = TRUE)
   write(paste("Survival data rows:", nrow(surv_data)), file = log_file, append = TRUE)
@@ -923,80 +744,98 @@ PlotSurvKM <- function(dat, numSeed, SplitProp, Result, horizon) {
     surv_fit <- survfit(Surv(time, event) ~ risk_group, data = surv_data)
     write(paste("\n=== Survival Fit ==="), file = log_file, append = TRUE)
     write(paste("Strata:", paste(names(surv_fit$strata), collapse=", ")), file = log_file, append = TRUE)
-    write(paste("Number of strata:", length(surv_fit$strata)), file = log_file, append = TRUE)
-    for (i in seq_along(surv_fit$strata)) {
-      write(paste("  ", names(surv_fit$strata)[i], ":", surv_fit$strata[i], "observations"), file = log_file, append = TRUE)
-    }
   }, error = function(e) {
     write(paste("ERROR in survfit:", e$message), file = log_file, append = TRUE)
     cat(paste("STEPWISE_LOG:Error in survival fit:", e$message, "\n"), file = stderr())
     return(NULL)
   })
 
-  # Debug: check survival fit
   cat(paste("STEPWISE_LOG:Survival fit strata:", paste(names(surv_fit$strata), collapse=", "), "\n"), file = stderr())
 
-  # Create plot data manually
+  # ====================================================================
+  # [FIX START] Manually build plot_data to include 0-event groups
+  # ====================================================================
+  
   surv_summary <- summary(surv_fit)
   
-  if (is.null(surv_summary$strata)) {
-    write(paste("WARNING: surv_summary$strata is NULL (likely only 1 group)"), file = log_file, append = TRUE)
-    cat(paste("STEPWISE_LOG:Warning - surv_summary$strata is NULL\n"), file = stderr())
+  # 1. (time=0, surv=1.0) 시작점을 모든 그룹에 대해 생성
+  plot_data <- data.frame(
+    time = 0,
+    surv = 1.0,
+    strata = factor(all_group_levels, levels = all_group_levels)
+  )
+  
+  # 2. summary(surv_fit)에서 이벤트가 발생한 그룹의 데이터 추가
+  if (!is.null(surv_summary$strata)) {
+    event_data <- data.frame(
+      time = surv_summary$time,
+      surv = surv_summary$surv,
+      strata = factor(gsub("risk_group=", "", as.character(surv_summary$strata)),
+                      levels = all_group_levels)
+    )
+    plot_data <- rbind(plot_data, event_data)
     
-    # 1개 그룹만 있을 때 수동으로 strata 생성
-    if (length(unique(surv_data$risk_group)) == 1) {
-       strata_name <- as.character(unique(surv_data$risk_group)[1])
-       plot_data <- data.frame(
-         time = surv_summary$time,
-         surv = surv_summary$surv,
-         strata = factor(rep(strata_name, length(surv_summary$time)), 
-                         levels = c("Low Risk", "Medium Risk", "High Risk"))
-       )
-    } else {
-       write(paste("ERROR: Cannot determine strata."), file = log_file, append = TRUE)
-       return(NULL)
-    }
+    groups_with_events <- gsub("risk_group=", "", names(surv_fit$strata))
   } else {
-     plot_data <- data.frame(
-       time = surv_summary$time,
-       surv = surv_summary$surv,
-       strata = factor(gsub("risk_group=", "", as.character(surv_summary$strata)),
-                       levels = c("Low Risk", "Medium Risk", "High Risk"))
-     )
+    # survfit에 strata가 없는 경우 (e.g., 전체 데이터에 그룹이 1개)
+    groups_with_events <- c()
+    if (!is.null(surv_summary$time) && length(all_group_levels) == 1) {
+       event_data <- data.frame(
+          time = surv_summary$time,
+          surv = surv_summary$surv,
+          strata = factor(rep(all_group_levels[1], length(surv_summary$time)), levels = all_group_levels)
+       )
+       plot_data <- rbind(plot_data, event_data)
+       groups_with_events <- all_group_levels[1]
+    }
   }
 
-  write(paste("\n=== Plot Data ==="), file = log_file, append = TRUE)
+  # 3. 이벤트가 없었던 그룹(0-event)을 찾음
+  groups_without_events <- setdiff(all_group_levels, groups_with_events)
+  
+  write(paste("\n=== Plot Data Generation ==="), file = log_file, append = TRUE)
+  write(paste("All groups:", paste(all_group_levels, collapse=", ")), file = log_file, append = TRUE)
+  write(paste("Groups with events:", paste(groups_with_events, collapse=", ")), file = log_file, append = TRUE)
+  write(paste("Groups WITHOUT events:", paste(groups_without_events, collapse=", ")), file = log_file, append = TRUE)
+
+  # 4. 0-event 그룹에 대해 (max_time, 1.0) 종료점 추가
+  if (length(groups_without_events) > 0) {
+    max_time <- max(surv_data$time, na.rm = TRUE)
+    no_event_data <- data.frame(
+      time = max_time,
+      surv = 1.0,
+      strata = factor(groups_without_events, levels = all_group_levels)
+    )
+    
+    plot_data <- rbind(plot_data, no_event_data)
+    
+    log_message <- paste("Creating 100% survival line (0 events) for:", paste(groups_without_events, collapse=", "))
+    write(log_message, file = log_file, append = TRUE)
+    cat(paste("STEPWISE_LOG:", log_message, "\n"), file = stderr())
+  }
+  
+  # ====================================================================
+  # [FIX END]
+  # ====================================================================
+
+  write(paste("\n=== Final Plot Data ==="), file = log_file, append = TRUE)
   write(paste("Plot data rows:", nrow(plot_data)), file = log_file, append = TRUE)
   write(paste("Unique strata in plot:", paste(unique(plot_data$strata), collapse=", ")), file = log_file, append = TRUE)
-  for (stratum in unique(plot_data$strata)) {
-    n_points <- sum(plot_data$strata == stratum)
-    write(paste("  ", stratum, ":", n_points, "time points"), file = log_file, append = TRUE)
-  }
 
-  # Debug: check plot data groups
-  cat(paste("STEPWISE_LOG:Plot data groups:", paste(unique(plot_data$strata), collapse=", "), "\n"), file = stderr())
-
-  # [FIX] 모든 그룹에 대해 정적(static) 컬러맵을 정의합니다.
+  # 정적 컬러맵 정의
   color_map <- c(
     "Low Risk" = nature_colors$green,
     "Medium Risk" = nature_colors$orange,
     "High Risk" = nature_colors$red
   )
 
-  write(paste("\n=== Color Mapping (Static) ==="), file = log_file, append = TRUE)
-  write(paste("Color map:"), file = log_file, append = TRUE)
-  for (group in names(color_map)) {
-    write(paste("  ", group, ":", color_map[group]), file = log_file, append = TRUE)
-  }
-  
   write(paste("\n=== Creating Plot ==="), file = log_file, append = TRUE)
 
   p <- ggplot(plot_data, aes(x = time, y = surv, color = strata)) +
-    geom_step(linewidth = 0.5) +
+    geom_step(linewidth = 0.5) + # geom_step()이 KM커브에 적합
     labs(x = "Time (years)", y = "Survival Probability",
          title = "Kaplan-Meier Survival Curves by Risk Groups", color = "Risk Group") +
     ylim(0, 1) +
-    # [FIX] scale_color_manual에 정적 맵, limits, drop=FALSE를 전달합니다.
     scale_color_manual(
       values = color_map, 
       limits = names(color_map), # 범례 순서 및 전체 레벨 고정
@@ -1055,24 +894,15 @@ PlotSurvTimeAUC <- function(dat, numSeed, SplitProp, Result) {
       if (any(is.infinite(lptr)) || any(is.na(lptr))) next
       if (any(is.infinite(lpts)) || any(is.na(lpts))) next
       
-      # Calculate AUC at different time points
       for (t in time_points) {
         if (max(trdat1$Survtime) >= t) {
-          trauc <- tryCatch({
-            cdROC(stime=trdat1$Survtime,status=trdat1$Event,marker = lptr,predict.time = t)$auc
-          }, error = function(e) NA)
-          if (!is.na(trauc)) {
-            auc_over_time <- rbind(auc_over_time, data.frame(time = t, auc = trauc, dataset = "Training"))
-          }
+          trauc <- tryCatch({ cdROC(stime=trdat1$Survtime,status=trdat1$Event,marker = lptr,predict.time = t)$auc }, error = function(e) NA)
+          if (!is.na(trauc)) { auc_over_time <- rbind(auc_over_time, data.frame(time = t, auc = trauc, dataset = "Training")) }
         }
         
         if (max(tsdat1$Survtime) >= t) {
-          tsauc <- tryCatch({
-            cdROC(stime=tsdat1$Survtime,status=tsdat1$Event,marker = lpts,predict.time = t)$auc
-          }, error = function(e) NA)
-          if (!is.na(tsauc)) {
-            auc_over_time <- rbind(auc_over_time, data.frame(time = t, auc = tsauc, dataset = "Test"))
-          }
+          tsauc <- tryCatch({ cdROC(stime=tsdat1$Survtime,status=tsdat1$Event,marker = lpts,predict.time = t)$auc }, error = function(e) NA)
+          if (!is.na(tsauc)) { auc_over_time <- rbind(auc_over_time, data.frame(time = t, auc = tsauc, dataset = "Test")) }
         }
       }
     }, error = function(e) {})
@@ -1080,7 +910,6 @@ PlotSurvTimeAUC <- function(dat, numSeed, SplitProp, Result) {
   
   if (nrow(auc_over_time) == 0) return(NULL)
   
-  # Aggregate by time point
   auc_summary <- aggregate(auc ~ time + dataset, data = auc_over_time, FUN = mean, na.rm = TRUE)
   
   p <- ggplot(auc_summary, aes(x = time, y = auc, color = dataset)) +
@@ -1119,11 +948,9 @@ PlotSurvRiskDist <- function(dat, Result) {
     event = factor(dat$Event[valid_idx], levels = c(0, 1), labels = c("Censored", "Event"))
   )
 
-  # Create risk groups (use log file for debugging if needed)
   log_file <- "figures/Surv_Risk_Debug.log"
   risk_data$risk_group <- assign_risk_groups(risk_scores_valid, log_file = log_file)
   
-  # Calculate density scaling factor
   n_total <- length(risk_data$risk_score)
   range_risk <- diff(range(risk_data$risk_score))
   bin_width <- range_risk / 30
@@ -1147,7 +974,6 @@ PlotSurvRiskDist <- function(dat, Result) {
     nature_theme(base_size = 10) +
     theme(legend.position = "none")
   
-  # Save plots (don't combine, save separately)
   save_plot(p1, 'Surv_Risk_Distribution', width_inch = 7, height_inch = 5)
   save_plot(p2, 'Surv_Risk_Group_Boxplot', width_inch = 5, height_inch = 5)
 }
@@ -1160,19 +986,16 @@ PlotSurvCalibration <- function(dat, numSeed, SplitProp, Result, horizon) {
 
 # Stepwise Selection Process Visualization
 PlotSurvStepwiseProcess <- function(outdir) {
-  # Read intermediate stepwise results
   stepwise_file <- paste0(outdir, '/Intermediate_Stepwise_Total.csv')
   if (!file.exists(stepwise_file)) return(NULL)
   
   stepwise_data <- read.csv(stepwise_file, stringsAsFactors = FALSE)
   
-  # Extract step number and variable count
   stepwise_data$step <- seq_len(nrow(stepwise_data))
   stepwise_data$n_vars <- sapply(strsplit(stepwise_data$Variable, " \\+ "), length)
   stepwise_data$trainAUC <- as.numeric(stepwise_data$trainAUC)
   stepwise_data$testAUC <- as.numeric(stepwise_data$testAUC)
   
-  # Reshape for plotting
   auc_long <- reshape2::melt(stepwise_data[, c("step", "trainAUC", "testAUC")], 
                               id.vars = "step", variable.name = "type", value.name = "AUC")
   
