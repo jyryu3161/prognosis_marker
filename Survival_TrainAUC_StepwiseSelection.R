@@ -649,11 +649,11 @@ PlotSurVarImp <- function(dat,Result){
 # Kaplan-Meier Survival Curves by Risk Groups
 #
 # ==============================================================================
-#  [FINAL FIX] PlotSurvKM
-#  - 0건의 이벤트를 가진 그룹(e.g., Low, Medium)을 식별합니다.
-#  - 모든 그룹에 대해 (time=0, surv=1.0) 시작점을 강제로 추가합니다.
-#  - 0건 이벤트 그룹에 대해 (time=max_time, surv=1.0) 종료점을 강제로 추가하여
-#    수평선이 그려지도록 합니다.
+#  [v3 FIX] PlotSurvKM
+#  - survfit (모든 그룹)과 summary(survfit) (이벤트 발생 그룹)을
+#    명확히 구분하여 이벤트가 0건인 그룹을 정확히 식별합니다.
+#  - 0건 이벤트 그룹(Low, Medium)에 대해 (0, 1.0) 및 (max_time, 1.0)
+#    포인트를 확실하게 추가하여 수평선을 생성합니다.
 # ==============================================================================
 PlotSurvKM <- function(dat, numSeed, SplitProp, Result, horizon) {
   # Create debug log file
@@ -661,7 +661,7 @@ PlotSurvKM <- function(dat, numSeed, SplitProp, Result, horizon) {
   if (!dir.exists("figures")) dir.create("figures", recursive = TRUE)
 
   # Initialize log file
-  write(paste("=== Kaplan-Meier Plot Debug Log ==="), file = log_file, append = FALSE)
+  write(paste("=== Kaplan-Meier Plot Debug Log (v3) ==="), file = log_file, append = FALSE)
   write(paste("Timestamp:", Sys.time()), file = log_file, append = TRUE)
   write(paste("Total samples in dataset:", nrow(dat)), file = log_file, append = TRUE)
   write(paste("Variables in model:", Result[1,1]), file = log_file, append = TRUE)
@@ -742,8 +742,10 @@ PlotSurvKM <- function(dat, numSeed, SplitProp, Result, horizon) {
   # Fit survival curves
   tryCatch({
     surv_fit <- survfit(Surv(time, event) ~ risk_group, data = surv_data)
+    surv_summary <- summary(surv_fit) # Get summary *once*
     write(paste("\n=== Survival Fit ==="), file = log_file, append = TRUE)
-    write(paste("Strata:", paste(names(surv_fit$strata), collapse=", ")), file = log_file, append = TRUE)
+    write(paste("Strata in surv_fit:", paste(names(surv_fit$strata), collapse=", ")), file = log_file, append = TRUE)
+    write(paste("Strata in surv_summary:", paste(unique(surv_summary$strata), collapse=", ")), file = log_file, append = TRUE)
   }, error = function(e) {
     write(paste("ERROR in survfit:", e$message), file = log_file, append = TRUE)
     cat(paste("STEPWISE_LOG:Error in survival fit:", e$message, "\n"), file = stderr())
@@ -753,66 +755,88 @@ PlotSurvKM <- function(dat, numSeed, SplitProp, Result, horizon) {
   cat(paste("STEPWISE_LOG:Survival fit strata:", paste(names(surv_fit$strata), collapse=", "), "\n"), file = stderr())
 
   # ====================================================================
-  # [FIX START] Manually build plot_data to include 0-event groups
+  # [v3 FIX] Manually build plot_data to include all groups
   # ====================================================================
-  
-  surv_summary <- summary(surv_fit)
-  
-  # 1. (time=0, surv=1.0) 시작점을 모든 그룹에 대해 생성
-  plot_data <- data.frame(
-    time = 0,
-    surv = 1.0,
-    strata = factor(all_group_levels, levels = all_group_levels)
-  )
-  
-  # 2. summary(surv_fit)에서 이벤트가 발생한 그룹의 데이터 추가
-  if (!is.null(surv_summary$strata)) {
-    event_data <- data.frame(
-      time = surv_summary$time,
-      surv = surv_summary$surv,
-      strata = factor(gsub("risk_group=", "", as.character(surv_summary$strata)),
-                      levels = all_group_levels)
-    )
-    plot_data <- rbind(plot_data, event_data)
-    
-    groups_with_events <- gsub("risk_group=", "", names(surv_fit$strata))
+
+  # 1. Get ALL groups present in the fit
+  if (!is.null(surv_fit$strata) && length(surv_fit$strata) > 0) {
+    groups_in_fit <- gsub("risk_group=", "", names(surv_fit$strata))
   } else {
-    # survfit에 strata가 없는 경우 (e.g., 전체 데이터에 그룹이 1개)
-    groups_with_events <- c()
-    if (!is.null(surv_summary$time) && length(all_group_levels) == 1) {
-       event_data <- data.frame(
-          time = surv_summary$time,
-          surv = surv_summary$surv,
-          strata = factor(rep(all_group_levels[1], length(surv_summary$time)), levels = all_group_levels)
-       )
-       plot_data <- rbind(plot_data, event_data)
-       groups_with_events <- all_group_levels[1]
+    groups_in_fit <- as.character(unique(surv_data$risk_group))
+  }
+  
+  # 2. Get groups that have event/censoring data in the SUMMARY
+  if (!is.null(surv_summary$strata) && length(surv_summary$time) > 0) {
+    groups_in_summary <- unique(gsub("risk_group=", "", as.character(surv_summary$strata)))
+  } else {
+    groups_in_summary <- c() 
+  }
+  
+  # 3. Find 0-event groups by finding the difference
+  groups_without_events <- setdiff(groups_in_fit, groups_in_summary)
+
+  write(paste("\n=== Plot Data Generation (v3 Fix) ==="), file = log_file, append = TRUE)
+  write(paste("All groups in fit:", paste(groups_in_fit, collapse=", ")), file = log_file, append = TRUE)
+  write(paste("Groups in summary (events):", paste(groups_in_summary, collapse=", ")), file = log_file, append = TRUE)
+  write(paste("Groups WITHOUT events:", paste(groups_without_events, collapse=", ")), file = log_file, append = TRUE)
+
+  # Initialize plot_data
+  plot_data <- data.frame(
+    time = numeric(),
+    surv = numeric(),
+    strata = factor(character(), levels = all_group_levels)
+  )
+
+  # 4. Process groups WITH events (from summary)
+  if (length(groups_in_summary) > 0) {
+    for (grp in groups_in_summary) {
+      # Add (0, 1.0) start point
+      plot_data <- rbind(plot_data, data.frame(
+        time = 0,
+        surv = 1.0,
+        strata = factor(grp, levels = all_group_levels)
+      ))
+      
+      # Add event data from summary
+      grp_idx <- which(gsub("risk_group=", "", as.character(surv_summary$strata)) == grp)
+      if (length(grp_idx) > 0) {
+        grp_data <- data.frame(
+          time = surv_summary$time[grp_idx],
+          surv = surv_summary$surv[grp_idx],
+          strata = factor(grp, levels = all_group_levels)
+        )
+        plot_data <- rbind(plot_data, grp_data)
+      }
+    }
+  }
+  
+  # 5. Process groups WITHOUT events (create 100% survival line)
+  if (length(groups_without_events) > 0) {
+    max_time <- max(surv_data$time, na.rm = TRUE)
+    
+    for (grp in groups_without_events) {
+      # Add (0, 1.0) start point
+      plot_data <- rbind(plot_data, data.frame(
+        time = 0,
+        surv = 1.0,
+        strata = factor(grp, levels = all_group_levels)
+      ))
+      
+      # Add (max_time, 1.0) end point
+      plot_data <- rbind(plot_data, data.frame(
+        time = max_time,
+        surv = 1.0,
+        strata = factor(grp, levels = all_group_levels)
+      ))
+      
+      log_message <- paste("Creating 100% survival line (0 events) for:", grp)
+      write(log_message, file = log_file, append = TRUE)
+      cat(paste("STEPWISE_LOG:", log_message, "\n"), file = stderr())
     }
   }
 
-  # 3. 이벤트가 없었던 그룹(0-event)을 찾음
-  groups_without_events <- setdiff(all_group_levels, groups_with_events)
-  
-  write(paste("\n=== Plot Data Generation ==="), file = log_file, append = TRUE)
-  write(paste("All groups:", paste(all_group_levels, collapse=", ")), file = log_file, append = TRUE)
-  write(paste("Groups with events:", paste(groups_with_events, collapse=", ")), file = log_file, append = TRUE)
-  write(paste("Groups WITHOUT events:", paste(groups_without_events, collapse=", ")), file = log_file, append = TRUE)
-
-  # 4. 0-event 그룹에 대해 (max_time, 1.0) 종료점 추가
-  if (length(groups_without_events) > 0) {
-    max_time <- max(surv_data$time, na.rm = TRUE)
-    no_event_data <- data.frame(
-      time = max_time,
-      surv = 1.0,
-      strata = factor(groups_without_events, levels = all_group_levels)
-    )
-    
-    plot_data <- rbind(plot_data, no_event_data)
-    
-    log_message <- paste("Creating 100% survival line (0 events) for:", paste(groups_without_events, collapse=", "))
-    write(log_message, file = log_file, append = TRUE)
-    cat(paste("STEPWISE_LOG:", log_message, "\n"), file = stderr())
-  }
+  # Sort by strata and time for proper plotting
+  plot_data <- plot_data[order(plot_data$strata, plot_data$time), ]
   
   # ====================================================================
   # [FIX END]
@@ -831,7 +855,8 @@ PlotSurvKM <- function(dat, numSeed, SplitProp, Result, horizon) {
 
   write(paste("\n=== Creating Plot ==="), file = log_file, append = TRUE)
 
-  p <- ggplot(plot_data, aes(x = time, y = surv, color = strata)) +
+  # Create plot with proper grouping
+  p <- ggplot(plot_data, aes(x = time, y = surv, color = strata, group = strata)) +
     geom_step(linewidth = 0.5) + # geom_step()이 KM커브에 적합
     labs(x = "Time (years)", y = "Survival Probability",
          title = "Kaplan-Meier Survival Curves by Risk Groups", color = "Risk Group") +

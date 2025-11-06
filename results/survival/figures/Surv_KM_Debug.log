@@ -1,19 +1,8 @@
-=== Kaplan-Meier Plot Debug Log ===
-Timestamp: 2025-11-05 12:57:54.293924
+=== Kaplan-Meier Plot Debug Log (v3) ===
+Timestamp: 2025-11-06 13:24:18.397668
 Total samples in dataset: 143
 Variables in model: CELF6 + IGFL1 + PLAA + GPR61 + SRRD + LGALS8
 Cox model fitted successfully
-
-=== Risk Scores ===
-Total risk scores: 143
-NA risk scores: 0
-Valid samples after filtering: 143
-Risk score range: -17.0250332267376 to 15.607932759909
-Risk score mean: -1.65459866088012e-16 SD: 5.92211203870861
-
-=== Risk Score Summary ===
-   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
--17.025  -4.140   0.462   0.000   4.823  15.608 
 
 === assign_risk_groups called ===
 Total scores: 143
@@ -29,47 +18,25 @@ groups
    Low Medium   High   <NA> 
     48     47     48      0 
 
-=== Risk Groups Created ===
-Base groups distribution:
-base_groups
-   Low Medium   High   <NA> 
-    48     47     48      0 
-
-=== Risk Groups with Labels ===
-risk_groups
-   Low Risk Medium Risk   High Risk        <NA> 
-         48          47          48           0 
-Valid group assignments: 143
-
-=== Final Group Counts ===
-risk_groups_filtered
-   Low Risk Medium Risk   High Risk 
-         48          47          48 
-Number of groups: 3
-Total samples in groups: 143
-
 === Survival Data ===
 Survival data rows: 143
 Time range: 0 to 23.5753424657534
 Events: 18 out of 143 (12.6%)
 
 === Survival Fit ===
-Strata: risk_group=Low Risk, risk_group=Medium Risk, risk_group=High Risk
-Number of strata: 3
-   risk_group=Low Risk : 48 observations
-   risk_group=Medium Risk : 46 observations
-   risk_group=High Risk : 47 observations
+Strata in surv_fit: risk_group=Low Risk, risk_group=Medium Risk, risk_group=High Risk
+Strata in surv_summary: risk_group=High Risk
 
-=== Plot Data ===
-Plot data rows: 18
-Unique strata in plot: High Risk
-   High Risk : 18 time points
+=== Plot Data Generation (v3 Fix) ===
+All groups in fit: Low Risk, Medium Risk, High Risk
+Groups in summary (events): High Risk
+Groups WITHOUT events: Low Risk, Medium Risk
+Creating 100% survival line (0 events) for: Low Risk
+Creating 100% survival line (0 events) for: Medium Risk
 
-=== Color Mapping (Static) ===
-Color map:
-   Low Risk : #2ca02c
-   Medium Risk : #ff7f0e
-   High Risk : #d62728
+=== Final Plot Data ===
+Plot data rows: 23
+Unique strata in plot: Low Risk, Medium Risk, High Risk
 
 === Creating Plot ===
 Plot created successfully
