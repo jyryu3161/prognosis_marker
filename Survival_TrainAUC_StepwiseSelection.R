@@ -46,6 +46,13 @@ nature_colors <- list(
 )
 
 # Helper to create consistent tertile-based risk groups
+#
+# ==============================================================================
+#  [FIXED FUNCTION] assign_risk_groups
+#  - 'else' 블록(수동 할당)의 로직을 n_valid < n_labels (e.g., 2 < 3) 
+#    엣지 케이스를 올바르게 처리하도록 수정했습니다.
+#  - 기존 로직은 이 경우 모든 샘플을 'High' 그룹에 할당했습니다.
+# ==============================================================================
 assign_risk_groups <- function(scores, labels = c("Low", "Medium", "High"), log_file = NULL) {
   if (length(scores) == 0 || all(is.na(scores))) {
     return(factor(rep(NA_character_, length(scores)), levels = labels))
@@ -84,32 +91,51 @@ assign_risk_groups <- function(scores, labels = c("Low", "Medium", "High"), log_
     if (!is.null(log_file)) {
       write("Using manual assignment (breaks not unique)", file = log_file, append = TRUE)
     }
+    
     groups <- rep(NA_character_, length(scores))
     valid_idx <- which(!is.na(scores))
-    if (length(valid_idx) > 0) {
+    n_valid <- length(valid_idx)
+    
+    if (n_valid > 0) {
       ordered_idx <- valid_idx[order(scores[valid_idx])]
-      n_valid <- length(ordered_idx)
-      split_size <- floor(n_valid / length(labels))
-      remainder <- n_valid - split_size * (length(labels) - 1)
-
+      n_labels <- length(labels)
+      
+      # [FIX] 새로운 그룹 크기 계산 로직
+      # n_valid %/% n_labels로 기본 크기를 계산하고,
+      # n_valid %% n_labels로 나머지(remainder)를 계산하여 앞 그룹들에 분배합니다.
+      base_size <- floor(n_valid / n_labels)
+      rem <- n_valid %% n_labels
+      
+      group_sizes <- rep(base_size, n_labels)
+      if (rem > 0) {
+        group_sizes[1:rem] <- group_sizes[1:rem] + 1
+      }
+      
       if (!is.null(log_file)) {
-        write(paste("Manual split - valid samples:", n_valid, "split_size:", split_size, "remainder:", remainder), file = log_file, append = TRUE)
+        write(paste("Manual split - n_valid:", n_valid, "n_labels:", n_labels), file = log_file, append = TRUE)
+        write(paste("Manual split - base_size:", base_size, "remainder:", rem), file = log_file, append = TRUE)
+        write(paste("Manual split - group sizes:", paste(group_sizes, collapse=", ")), file = log_file, append = TRUE)
       }
 
-      start <- 1
+      current_idx <- 1
       for (i in seq_along(labels)) {
-        if (i < length(labels)) {
-          end <- start + split_size - 1
-        } else {
-          end <- start + remainder - 1
-        }
-        if (start <= end && start <= length(ordered_idx) && end <= length(ordered_idx)) {
-          groups[ordered_idx[start:end]] <- labels[i]
-          if (!is.null(log_file)) {
-            write(paste("  Group", labels[i], "- indices", start, "to", end, "(n=", end-start+1, ")"), file = log_file, append = TRUE)
+        group_n <- group_sizes[i]
+        if (group_n > 0) {
+          start <- current_idx
+          end <- current_idx + group_n - 1
+          
+          if (end > n_valid) { end <- n_valid } # Safeguard
+
+          if (start <= end) {
+             groups[ordered_idx[start:end]] <- labels[i]
+             if (!is.null(log_file)) {
+               write(paste("  Group", labels[i], "- indices", start, "to", end, "(n=", end-start+1, ")"), file = log_file, append = TRUE)
+             }
+             current_idx <- end + 1
           }
         }
-        start <- end + 1
+        # group_n이 0이면 (e.g., n_valid=2, n_labels=3 -> [1, 1, 0]),
+        # 해당 그룹('High')은 0개의 샘플을 할당받고 current_idx는 전진하지 않습니다.
       }
     }
 
@@ -757,6 +783,14 @@ PlotSurVarImp <- function(dat,Result){
 }
 
 # Kaplan-Meier Survival Curves by Risk Groups
+#
+# ==============================================================================
+#  [IMPROVED FUNCTION] PlotSurvKM
+#  - 'color_map'을 모든 그룹(Low, Medium, High)에 대해 정적으로 정의합니다.
+#  - 'plot_data$strata'를 명시적으로 factor로 변환합니다.
+#  - 'scale_color_manual'에 'limits'와 'drop = FALSE'를 추가하여
+#    데이터가 없는 그룹도 범례(legend)에 표시되도록 합니다.
+# ==============================================================================
 PlotSurvKM <- function(dat, numSeed, SplitProp, Result, horizon) {
   # Create debug log file
   log_file <- "figures/Surv_KM_Debug.log"
@@ -832,7 +866,7 @@ PlotSurvKM <- function(dat, numSeed, SplitProp, Result, horizon) {
   write(paste(capture.output(print(tbl_risk)), collapse="\n"), file = log_file, append = TRUE)
 
   # Debug: check risk_groups after adding "Risk" suffix
-  cat(paste("STEPWISE_LOG:Risk groups after factor creation:\n"), file = stderr())
+  cat(paste("STEPWEISE_LOG:Risk groups after factor creation:\n"), file = stderr())
   print(table(risk_groups, useNA = "always"), file = stderr())
 
   valid_group_idx <- which(!is.na(risk_groups))
@@ -859,16 +893,13 @@ PlotSurvKM <- function(dat, numSeed, SplitProp, Result, horizon) {
   cat(paste("STEPWISE_LOG:Kaplan-Meier groups:", paste(names(group_counts), "=", group_counts, collapse=", "), "\n"), file = stderr())
   cat(paste("STEPWISE_LOG:Total samples:", length(risk_groups_filtered), "\n"), file = stderr())
 
-  if (length(group_counts) < 2) {
-    write(paste("ERROR: Only", length(group_counts), "group(s) found, need at least 2"), file = log_file, append = TRUE)
-    cat(paste("STEPWISE_LOG:Kaplan-Meier plot skipped - insufficient groups:",
+  # [FIX] 여기서는 1개 그룹만 있어도 일단 진행합니다. (디버깅 목적)
+  # ggplot에서 어차피 1개 그룹만 그릴 것입니다.
+  if (sum(group_counts) < 2) {
+    write(paste("ERROR: Only", sum(group_counts), "sample(s) found, need at least 2"), file = log_file, append = TRUE)
+    cat(paste("STEPWISE_LOG:Kaplan-Meier plot skipped - insufficient samples:",
               paste(names(group_counts), "=", group_counts, collapse=", "), "\n"), file = stderr())
     return(NULL)
-  }
-
-  # Remove groups with 0 samples (shouldn't happen but just in case)
-  if (any(group_counts == 0)) {
-    write("WARNING: Some groups have 0 samples (filtering them out)", file = log_file, append = TRUE)
   }
 
   surv_data <- data.frame(
@@ -876,6 +907,10 @@ PlotSurvKM <- function(dat, numSeed, SplitProp, Result, horizon) {
     event = surv_event,
     risk_group = risk_groups_filtered
   )
+  
+  # [FIX] strata가 비어있는지 확인하기 위해 factor 레벨을 명시적으로 설정
+  surv_data$risk_group <- factor(surv_data$risk_group, 
+                                 levels = c("Low Risk", "Medium Risk", "High Risk"))
 
   write(paste("\n=== Survival Data ==="), file = log_file, append = TRUE)
   write(paste("Survival data rows:", nrow(surv_data)), file = log_file, append = TRUE)
@@ -903,11 +938,32 @@ PlotSurvKM <- function(dat, numSeed, SplitProp, Result, horizon) {
 
   # Create plot data manually
   surv_summary <- summary(surv_fit)
-  plot_data <- data.frame(
-    time = surv_summary$time,
-    surv = surv_summary$surv,
-    strata = gsub("risk_group=", "", as.character(surv_summary$strata))
-  )
+  
+  if (is.null(surv_summary$strata)) {
+    write(paste("WARNING: surv_summary$strata is NULL (likely only 1 group)"), file = log_file, append = TRUE)
+    cat(paste("STEPWISE_LOG:Warning - surv_summary$strata is NULL\n"), file = stderr())
+    
+    # 1개 그룹만 있을 때 수동으로 strata 생성
+    if (length(unique(surv_data$risk_group)) == 1) {
+       strata_name <- as.character(unique(surv_data$risk_group)[1])
+       plot_data <- data.frame(
+         time = surv_summary$time,
+         surv = surv_summary$surv,
+         strata = factor(rep(strata_name, length(surv_summary$time)), 
+                         levels = c("Low Risk", "Medium Risk", "High Risk"))
+       )
+    } else {
+       write(paste("ERROR: Cannot determine strata."), file = log_file, append = TRUE)
+       return(NULL)
+    }
+  } else {
+     plot_data <- data.frame(
+       time = surv_summary$time,
+       surv = surv_summary$surv,
+       strata = factor(gsub("risk_group=", "", as.character(surv_summary$strata)),
+                       levels = c("Low Risk", "Medium Risk", "High Risk"))
+     )
+  }
 
   write(paste("\n=== Plot Data ==="), file = log_file, append = TRUE)
   write(paste("Plot data rows:", nrow(plot_data)), file = log_file, append = TRUE)
@@ -920,26 +976,19 @@ PlotSurvKM <- function(dat, numSeed, SplitProp, Result, horizon) {
   # Debug: check plot data groups
   cat(paste("STEPWISE_LOG:Plot data groups:", paste(unique(plot_data$strata), collapse=", "), "\n"), file = stderr())
 
-  # Create color mapping based on available groups
-  available_groups <- unique(plot_data$strata)
-  color_map <- c()
-  if ("Low Risk" %in% available_groups) color_map["Low Risk"] <- nature_colors$green
-  if ("Medium Risk" %in% available_groups) color_map["Medium Risk"] <- nature_colors$orange
-  if ("High Risk" %in% available_groups) color_map["High Risk"] <- nature_colors$red
+  # [FIX] 모든 그룹에 대해 정적(static) 컬러맵을 정의합니다.
+  color_map <- c(
+    "Low Risk" = nature_colors$green,
+    "Medium Risk" = nature_colors$orange,
+    "High Risk" = nature_colors$red
+  )
 
-  write(paste("\n=== Color Mapping ==="), file = log_file, append = TRUE)
+  write(paste("\n=== Color Mapping (Static) ==="), file = log_file, append = TRUE)
   write(paste("Color map:"), file = log_file, append = TRUE)
   for (group in names(color_map)) {
     write(paste("  ", group, ":", color_map[group]), file = log_file, append = TRUE)
   }
-
-  # Ensure all groups are in the plot
-  if (length(color_map) != length(available_groups)) {
-    write(paste("WARNING: Color map size", length(color_map), "!= available groups", length(available_groups)), file = log_file, append = TRUE)
-    cat(paste("STEPWISE_LOG:Warning - some groups missing from color map. Available:",
-              paste(available_groups, collapse=", "), "\n"), file = stderr())
-  }
-
+  
   write(paste("\n=== Creating Plot ==="), file = log_file, append = TRUE)
 
   p <- ggplot(plot_data, aes(x = time, y = surv, color = strata)) +
@@ -947,7 +996,12 @@ PlotSurvKM <- function(dat, numSeed, SplitProp, Result, horizon) {
     labs(x = "Time (years)", y = "Survival Probability",
          title = "Kaplan-Meier Survival Curves by Risk Groups", color = "Risk Group") +
     ylim(0, 1) +
-    scale_color_manual(values = color_map) +
+    # [FIX] scale_color_manual에 정적 맵, limits, drop=FALSE를 전달합니다.
+    scale_color_manual(
+      values = color_map, 
+      limits = names(color_map), # 범례 순서 및 전체 레벨 고정
+      drop = FALSE               # 데이터에 없는 레벨도 범례에 표시
+    ) +
     nature_theme(base_size = 10)
 
   write(paste("Plot created successfully"), file = log_file, append = TRUE)

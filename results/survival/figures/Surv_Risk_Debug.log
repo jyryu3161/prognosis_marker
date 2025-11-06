@@ -1,0 +1,14 @@
+
+=== assign_risk_groups called ===
+Total scores: 143
+NA scores: 0
+Valid scores: 143
+Score range: -17.0250332267376 to 15.607932759909
+Score mean: -1.65459866088012e-16 SD: 5.92211203870861
+Quantile breaks: -17.0250332267376, -2.54883277585262, 2.67572154651778, 15.607932759909
+Unique breaks: 4 out of 4
+Using cut() method for group assignment
+Group distribution after cut():
+groups
+   Low Medium   High   <NA> 
+    48     47     48      0 
