@@ -6,10 +6,8 @@ Prognostic gene signature workflows with AUC-driven stepwise selection for binar
 
 - **Binary classification**: Logistic regression with train/test splitting and ROC analysis
 - **Survival analysis**: Cox proportional hazards with time-dependent ROC curves
-- **Co-expression network analysis**: Gene-gene correlation networks for marker sets
-- **GO enrichment analysis**: Functional annotation of marker genes and co-expressed genes
 - **Reproducible**: Automated dependency management with pixi
-- **Publication-ready**: High-resolution figures (PNG/TIFF/SVG) with coefficient plots
+- **Publication-ready**: High-resolution figures (TIFF/SVG) with coefficient plots
 
 ## Installation
 
@@ -21,9 +19,8 @@ Prognostic gene signature workflows with AUC-driven stepwise selection for binar
 
 This script automatically:
 - Installs pixi if needed
-- Sets up the R/Python environment
+- Sets up the R environment
 - Installs all dependencies
-- Launches the Streamlit web interface (optional)
 
 ### Manual Install
 
@@ -48,10 +45,6 @@ Use the provided script to run analyses:
 
 # Survival analysis
 ./run_analysis.sh survival --config config/example_analysis.yaml
-
-# Co-expression and GO enrichment post-processing
-# (automatically processes both binary and survival results if available)
-./run_analysis.sh coexpression --config config/example_analysis.yaml
 ```
 
 Or use pixi directly:
@@ -59,7 +52,6 @@ Or use pixi directly:
 ```bash
 pixi run binary -- --config config/example_analysis.yaml
 pixi run survival -- --config config/example_analysis.yaml
-pixi run coexpression -- --config config/example_analysis.yaml
 ```
 
 ### Configuration
@@ -69,10 +61,6 @@ Create a YAML config file (see `config/example_analysis.yaml` for template):
 ```yaml
 workdir: .
 data_file: your_data.csv
-
-# Co-expression network parameters
-coexpression:
-  correlation_threshold: 0.7  # Absolute Pearson correlation cutoff for network edges
 
 binary:
   sample_id: sample
@@ -96,37 +84,11 @@ survival:
 #### Binary/Survival Analysis Results
 
 Main analysis results are saved in the configured output directory:
-- `ROCcurve.{png,tiff,svg}`: Train/test ROC curves
-- `Variable_Importance.{png,tiff,svg}`: Coefficient plots
+- `figures/ROCcurve.{tiff,svg}`: Train/test ROC curves
+- `figures/Variable_Importance.{tiff,svg}`: Coefficient plots
+- `figures/`: Additional publication-ready figures
 - `auc_iterations.csv`: Performance metrics per iteration
 - `Intermediate_*.csv`: Stepwise selection details
-
-#### Co-expression Network Analysis Results
-
-Post-processing results are saved in `{output_dir}/coexpression/`:
-- `selected_genes.csv`: Marker genes and co-expressed genes
-- `coexpression_edges.csv`: Gene-gene correlations (edges in the network)
-- `coexpression_network.png`: Network visualization
-- `go_enrichment_results.csv`: GO biological process enrichment results
-- `go_enrichment_dotplot.png`: GO enrichment visualization
-
-**Note**: The co-expression analysis automatically processes both binary and survival results if their configurations are present in the YAML file.
-
-## Streamlit Web Interface
-
-간단한 웹 UI로 분석 실행:
-
-```bash
-./run_server.sh
-```
-
-브라우저에서 http://localhost:8501 열기
-
-**기능:**
-- 데이터 업로드 (CSV)
-- 분석 타입 선택 (Binary/Survival)
-- 파라미터 설정
-- 결과 시각화 및 다운로드
 
 ## Troubleshooting
 
@@ -137,5 +99,4 @@ Post-processing results are saved in `{output_dir}/coexpression/`:
 ## Requirements
 
 - R ≥ 4.3
-- Python ≥ 3.9
 - pixi (installed automatically by `install.sh`)

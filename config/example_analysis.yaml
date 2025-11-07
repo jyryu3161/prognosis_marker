@@ -2,9 +2,6 @@
 workdir: "."
 data_file: Example_data.csv
 
-coexpression:
-  correlation_threshold: 0.7  # Absolute Pearson correlation cutoff for network edges
-
 binary:
   data_file: Example_data.csv
   sample_id: sample

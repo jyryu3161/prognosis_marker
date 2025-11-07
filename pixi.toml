@@ -23,21 +23,11 @@ r-magrittr = "*"
 # System libraries needed for R package compilation
 xz = "*"
 
-# Python dependencies for Streamlit web interface
-python = ">=3.9,<3.12"
-streamlit = ">=1.31.0"
-pandas = ">=2.1.0"
-pyyaml = ">=6.0.0"
-
 [tasks]
 # R package installation
-install-r-packages = "R -q -e \"install.packages(c('ROCR','pROC','cutpointr','coefplot','caret','nsROC','survival','yaml','ggplot2','dca','pheatmap','RiskRegression','rms','svglite','tiff','reshape2','gridExtra','survminer','igraph','tidygraph','ggraph'), repos='https://cloud.r-project.org'); if (!requireNamespace('BiocManager', quietly = TRUE)) install.packages('BiocManager', repos='https://cloud.r-project.org'); BiocManager::install(c('clusterProfiler','enrichplot','org.Hs.eg.db'), ask = FALSE, update = FALSE)\""
+install-r-packages = "R -q -e \"install.packages(c('ROCR','pROC','cutpointr','coefplot','caret','nsROC','survival','yaml','ggplot2','dca','pheatmap','RiskRegression','rms','svglite','tiff','reshape2','gridExtra','survminer'), repos='https://cloud.r-project.org')\""
 
 # R analysis workflows
 # Note: config file should be specified via --config argument
 binary = "Rscript Main_Binary.R"
 survival = "Rscript Main_Survival.R"
-coexpression = "Rscript Postprocess_Coexpression_Enrichment.R"
-
-# Streamlit codebase analyzer
-streamlit = "streamlit run streamlit_app.py --server.port 8501 --server.address localhost"

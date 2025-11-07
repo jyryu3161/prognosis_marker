@@ -3,12 +3,11 @@
 # ============================================================================
 # Prognosis Marker - Analysis Runner Script
 # ============================================================================
-# Runs binary, survival, or co-expression post-processing workflows using pixi
+# Runs binary or survival workflows using pixi
 #
 # Usage:
 #   ./run_analysis.sh binary --config path/to/config.yaml
 #   ./run_analysis.sh survival --config path/to/config.yaml
-#   ./run_analysis.sh coexpression --config path/to/config.yaml
 # ============================================================================
 
 set -e  # Exit on any error
@@ -63,20 +62,19 @@ fi
 
 # Check arguments
 if [ $# -lt 1 ]; then
-    print_error "Usage: $0 {binary|survival|coexpression} [--config CONFIG_FILE]"
+    print_error "Usage: $0 {binary|survival} [--config CONFIG_FILE]"
     print_info ""
     print_info "Examples:"
     print_info "  $0 binary --config config/example_analysis.yaml"
     print_info "  $0 survival --config analysis.yaml"
-    print_info "  $0 coexpression --config postprocess.yaml"
     exit 1
 fi
 
 ANALYSIS_TYPE=$1
 shift  # Remove first argument, rest will be passed to Rscript
 
-if [ "$ANALYSIS_TYPE" != "binary" ] && [ "$ANALYSIS_TYPE" != "survival" ] && [ "$ANALYSIS_TYPE" != "coexpression" ]; then
-    print_error "Analysis type must be 'binary', 'survival', or 'coexpression'"
+if [ "$ANALYSIS_TYPE" != "binary" ] && [ "$ANALYSIS_TYPE" != "survival" ]; then
+    print_error "Analysis type must be 'binary' or 'survival'"
     exit 1
 fi
 
