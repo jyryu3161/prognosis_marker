@@ -67,6 +67,13 @@ numSeed <- ifelse(is.null(bin_config$num_seed), 100, as.integer(bin_config$num_s
 SplitProp <- ifelse(is.null(bin_config$split_prop), 0.7, as.numeric(bin_config$split_prop))
 Freq <- ifelse(is.null(bin_config$freq), 80, as.integer(bin_config$freq))
 output_dir <- ifelse(is.null(bin_config$output_dir), "results/binary", bin_config$output_dir)
+max_candidates_per_step <- if (is.null(bin_config$max_candidates_per_step)) NULL else as.integer(bin_config$max_candidates_per_step)
+prescreen_seeds <- if (is.null(bin_config$prescreen_seeds)) NULL else as.integer(bin_config$prescreen_seeds)
+
+# New parameters for p-value adjustment and top-k selection
+top_k <- if (is.null(bin_config$top_k)) NULL else as.integer(bin_config$top_k)
+p_adjust_method <- if (is.null(bin_config$p_adjust_method)) "fdr" else bin_config$p_adjust_method
+p_threshold <- if (is.null(bin_config$p_threshold)) 0.05 else as.numeric(bin_config$p_threshold)
 
 # Handle exclude and include lists
 excvar <- ifelse(is.null(bin_config$exclude) || length(bin_config$exclude) == 0, 
@@ -118,7 +125,7 @@ cat(paste("STEPWISE_LOG:Total iterations:", numSeed, ", Variables:", length(totv
 cat(paste("PROGRESS_START:", numSeed, "\n"), file = stderr())
 
 # Extract candidate genes
-Candivar <- Extract_BinCandidGene(dat, numSeed, SplitProp, totvar, outcandir, Freq)
+Candivar <- Extract_BinCandidGene(dat, numSeed, SplitProp, totvar, outcandir, Freq, top_k, p_adjust_method, p_threshold)
 
 cat("STEPWISE_DONE\n", file = stderr())
 cat(paste("STEPWISE_LOG:Found", length(Candivar), "candidate genes\n"), file = stderr())
@@ -130,7 +137,10 @@ cat(paste("STEPWISE_LOG:Found", length(Candivar), "candidate genes\n"), file = s
 ##### Run TrainAUC-based stepwise selection (Outcome: Binary)
 #####################################################################
 cat(paste("STEPWISE_LOG:Starting stepwise selection with", length(Candivar), "candidate genes\n"), file = stderr())
-Result <- BinTrainAUCStepwise(Candivar, dat, fixvar, excvar, numSeed, SplitProp, outdir)
+if (!is.null(max_candidates_per_step) && !is.null(prescreen_seeds)) {
+  cat(paste("STEPWISE_LOG:Pre-screening enabled - max candidates per step:", max_candidates_per_step, ", prescreen seeds:", prescreen_seeds, "\n"), file = stderr())
+}
+Result <- BinTrainAUCStepwise(Candivar, dat, fixvar, excvar, numSeed, SplitProp, outdir, max_candidates_per_step, prescreen_seeds)
 cat(paste("STEPWISE_LOG:Stepwise selection completed\n"), file = stderr())
 #####################################################################
 

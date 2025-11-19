@@ -1,0 +1,42 @@
+# Configuration for TCGA_KIRC
+workdir: "."
+data_file: data/TCGA_KIRC_data.csv
+
+binary:
+  data_file: data/TCGA_KIRC_data.csv
+  sample_id: sample
+  outcome: OS
+  time_variable: OS.year
+  split_prop: 0.7
+  num_seed: 100  # Number of iterations
+  output_dir: results/TCGA_KIRC/binary
+  freq: 50  # Cutoff for most frequent significant genes (50% of 100 iterations)
+  exclude: []
+  include: []
+  # Optionally constrain the candidate feature set by listing column names here.
+  # features:
+
+  # P-value adjustment and filtering options
+  top_k: 1000  # Select top 1000 genes by adjusted p-value per iteration
+  p_adjust_method: fdr  # P-value adjustment method: "fdr" or "bonferroni"
+  p_threshold: 0.05  # Adjusted p-value threshold
+
+survival:
+  data_file: data/TCGA_KIRC_data.csv
+  sample_id: sample
+  time_variable: OS.year
+  event: OS
+  horizon: 5
+  split_prop: 0.7
+  num_seed: 100  # Number of iterations
+  output_dir: results/TCGA_KIRC/survival
+  freq: 50  # Cutoff for most frequent significant genes (50% of 100 iterations)
+  exclude: []
+  include: []
+  # Optionally constrain the candidate feature set by listing column names here.
+  # features:
+
+  # P-value adjustment and filtering options
+  top_k: 1000  # Select top 1000 genes by adjusted p-value per iteration
+  p_adjust_method: fdr  # P-value adjustment method: "fdr" or "bonferroni"
+  p_threshold: 0.05  # Adjusted p-value threshold

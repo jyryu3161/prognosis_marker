@@ -108,10 +108,14 @@ save_plot <- function(plot_obj, filename_base, width_inch = 7, height_inch = 5, 
   }
 }
 
-Extract_BinCandidGene <- function(dat,numSeed,SplitProp,totvar,outcandir,Freq){
+Extract_BinCandidGene <- function(dat,numSeed,SplitProp,totvar,outcandir,Freq,top_k=NULL,p_adjust_method="fdr",p_threshold=0.05){
   total_vars <- length(totvar)
   cat(paste("STEPWISE_LOG:Processing", total_vars, "variables across", numSeed, "iterations\n"), file = stderr())
-  
+  cat(paste("STEPWISE_LOG:P-value adjustment method:", p_adjust_method, ", threshold:", p_threshold, "\n"), file = stderr())
+  if (!is.null(top_k)) {
+    cat(paste("STEPWISE_LOG:Top-k selection enabled: selecting top", top_k, "genes per iteration\n"), file = stderr())
+  }
+
   for (s in seq(numSeed)){
     if (s %% 10 == 0 || s == 1) {
       cat(paste("STEPWISE_LOG:Iteration", s, "of", numSeed, "(", round(s/numSeed*100, 1), "%)\n"), file = stderr())
@@ -120,10 +124,10 @@ Extract_BinCandidGene <- function(dat,numSeed,SplitProp,totvar,outcandir,Freq){
     repeat {
       trIdx <- createDataPartition(dat$Outcome, p = SplitProp, list = FALSE, times = 1)
       trdat <- dat[trIdx, ]
-      
+
       n_tr_0 <- sum(trdat$Outcome == 0)
       n_tr_1 <- sum(trdat$Outcome == 1)
-      
+
       if (min(n_tr_0, n_tr_1) >= 2) break
     }
     tmpres <- NULL
@@ -131,12 +135,12 @@ Extract_BinCandidGene <- function(dat,numSeed,SplitProp,totvar,outcandir,Freq){
     for (j in match(totvar,colnames(dat))){
       var_name <- colnames(trdat)[j]
       var_count <- var_count + 1
-      
+
       # Print progress every 50 variables
       if (var_count %% 50 == 0) {
         cat(paste("STEPWISE_LOG:Iteration", s, "- Processing variable", var_count, "of", total_vars, "\n"), file = stderr())
       }
-      
+
       # Skip if variable has NA or constant values
       if (length(unique(trdat[,var_name])) <= 1 || any(is.na(trdat[,var_name]))){
         next
@@ -158,14 +162,37 @@ Extract_BinCandidGene <- function(dat,numSeed,SplitProp,totvar,outcandir,Freq){
       dir.create(outcandir)
     }
     if (!is.null(tmpres) && nrow(tmpres) > 0) {
-      write.csv(tmpres,paste0(outcandir,'/Logistic_seed',s,'.csv'),row.names = F)
-      cat(paste("STEPWISE_LOG:Iteration", s, "completed -", nrow(tmpres), "variables analyzed\n"), file = stderr())
+      # Apply p-value adjustment and filtering
+      tmpres_df <- data.frame(tmpres, stringsAsFactors = FALSE)
+      colnames(tmpres_df) <- c("X", "Estimate", "Std..Error", "Pr...z..")
+      tmpres_df$Pr...z.. <- as.numeric(tmpres_df$Pr...z..)
+
+      # Apply p-value adjustment
+      tmpres_df$Adjusted_P <- p.adjust(tmpres_df$Pr...z.., method = p_adjust_method)
+
+      # Filter by adjusted p-value threshold
+      tmpres_df <- tmpres_df[!is.na(tmpres_df$Adjusted_P) & tmpres_df$Adjusted_P < p_threshold, ]
+
+      # If top_k is specified, select top k genes by adjusted p-value
+      if (!is.null(top_k) && nrow(tmpres_df) > top_k) {
+        tmpres_df <- tmpres_df[order(tmpres_df$Adjusted_P), ]
+        tmpres_df <- tmpres_df[1:top_k, ]
+        cat(paste("STEPWISE_LOG:Iteration", s, "- Selected top", top_k, "genes from", nrow(tmpres_df), "significant genes\n"), file = stderr())
+      }
+
+      write.csv(tmpres_df,paste0(outcandir,'/Logistic_seed',s,'.csv'),row.names = F)
+      cat(paste("STEPWISE_LOG:Iteration", s, "completed -", nrow(tmpres_df), "significant variables (adjusted p <", p_threshold, ")\n"), file = stderr())
     } else {
       cat(paste("STEPWISE_LOG:Iteration", s, "completed - No valid variables found\n"), file = stderr())
     }
   }
   cat(paste("STEPWISE_LOG:Analyzing significance across iterations...\n"), file = stderr())
-  SignifGene <- NULL
+  
+  # Robust aggregation of significant genes across all iterations
+  all_genes <- c()
+  gene_lists <- list()
+  valid_seeds <- c()
+  
   for (s in seq(numSeed)){
     csv_file <- paste0(outcandir,'/Logistic_seed',s,'.csv')
     if (!file.exists(csv_file)) {
@@ -177,18 +204,22 @@ Extract_BinCandidGene <- function(dat,numSeed,SplitProp,totvar,outcandir,Freq){
       warning(paste("Empty CSV file for seed", s, "- skipping"))
       next
     }
-    if (s==1){
-      SignifGene <- cbind(SignifGene,Gene=res$X)
-    }
-    SignifGene <- cbind(SignifGene,sapply(SignifGene[,1],function(v) ifelse(v%in%res$X[which(!is.na(res$Pr...z..) & res$Pr...z..<0.05)],1,0)))
+    
+    gene_lists[[length(gene_lists) + 1]] <- res$X
+    valid_seeds <- c(valid_seeds, s)
+    all_genes <- unique(c(all_genes, res$X))
   }
-  
-  if (is.null(SignifGene) || nrow(SignifGene) == 0) {
+
+  if (length(all_genes) == 0) {
     stop("No valid variables found in any iteration. Please check your data.")
   }
-  colnames(SignifGene)[-1]<-paste('Rep',seq(numSeed),sep = '')
-  SignifGene1 <- data.frame(SignifGene)
-  SignifGene2<-data.frame(Gene=SignifGene1[,1],Freq=apply(SignifGene1[,-1],1,function(v) sum(as.numeric(v))))
+  
+  # Count frequencies
+  gene_freqs <- sapply(all_genes, function(g) {
+    sum(sapply(gene_lists, function(l) g %in% l))
+  })
+  
+  SignifGene2 <- data.frame(Gene = all_genes, Freq = gene_freqs)
   write.csv(SignifGene2,paste0(outcandir,'/Logistic_UnivariateResults.csv'),row.names = F)
   Candivar<-SignifGene2$Gene[which(SignifGene2$Freq>Freq)]
   cat(paste("STEPWISE_LOG:Candidate extraction complete -", length(Candivar), "genes selected (Freq >", Freq, ")\n"), file = stderr())
@@ -196,7 +227,87 @@ Extract_BinCandidGene <- function(dat,numSeed,SplitProp,totvar,outcandir,Freq){
 }
 
 
-Binforward_step <- function(dat, candid, fixvar, numSeed,SplitProp){
+# Pre-screening function to quickly evaluate candidates and select top N
+Binprescreen_candidates <- function(dat, candid, fixvar, prescreen_seeds, SplitProp, max_candidates){
+  cat(paste("STEPWISE_LOG:Pre-screening", length(candid), "candidates with", prescreen_seeds, "seeds...\n"), file = stderr())
+  prescreen_scores <- NULL
+  
+  for (s in seq(prescreen_seeds)){
+    if (s %% 5 == 0 || s == 1) {
+      cat(paste("STEPWISE_LOG:Pre-screening - Iteration", s, "of", prescreen_seeds, "\n"), file = stderr())
+    }
+    set.seed(s)
+    repeat {
+      trIdx <- createDataPartition(dat$Outcome, p = SplitProp, list = FALSE, times = 1)
+      trdat <- dat[trIdx, ]
+      tsdat <- dat[-trIdx, ]
+      
+      n_tr_0 <- sum(trdat$Outcome == 0)
+      n_tr_1 <- sum(trdat$Outcome == 1)
+      n_ts_0 <- sum(tsdat$Outcome == 0)
+      n_ts_1 <- sum(tsdat$Outcome == 1)
+      
+      if (min(n_tr_0, n_tr_1, n_ts_0, n_ts_1) >= 2) break
+    }
+    
+    for (g in setdiff(candid, fixvar)){
+      tryCatch({
+        f=as.formula(paste('Outcome ~ ',paste(fixvar,collapse = ' + '),' + ',g,collapse = ''))
+        trdat1 <- trdat[complete.cases(trdat[,c('Outcome',setdiff(c(fixvar,g),''))]),c('Outcome',setdiff(c(fixvar,g),''))]
+        tsdat1 <- tsdat[complete.cases(tsdat[,c('Outcome',setdiff(c(fixvar,g),''))]),c('Outcome',setdiff(c(fixvar,g),''))]
+        
+        if (nrow(trdat1) < 2 || nrow(tsdat1) < 2) {
+          next
+        }
+        
+        Logitres<-glm(f, data = trdat1, family = "binomial")
+        lptr <- predict(Logitres,trdat1, type="response")
+        trauc <- performance(prediction(lptr,trdat1[,'Outcome']),"auc")@y.values[[1]][1]
+        lpts <- predict(Logitres,tsdat1, type="response")
+        tsauc <- performance(prediction(lpts,tsdat1[,'Outcome']),"auc")@y.values[[1]][1]
+        
+        trauc <- ifelse(is.na(trauc), 0, as.numeric(trauc))
+        tsauc <- ifelse(is.na(tsauc), 0, as.numeric(tsauc))
+        
+        # Use average of train and test AUC as score
+        score <- (trauc + tsauc) / 2
+        prescreen_scores <- rbind(prescreen_scores, c(g, score, trauc, tsauc))
+      }, error = function(e) {
+        # Skip this candidate if model fitting fails
+      })
+    }
+  }
+  
+  if (is.null(prescreen_scores) || nrow(prescreen_scores) == 0) {
+    cat("STEPWISE_LOG:Pre-screening failed - using all candidates\n", file = stderr())
+    return(candid)
+  }
+  
+  # Aggregate scores across seeds
+  prescreen_df <- data.frame(prescreen_scores, stringsAsFactors = FALSE)
+  colnames(prescreen_df) <- c("candidate", "score", "trauc", "tsauc")
+  prescreen_df$score <- as.numeric(prescreen_df$score)
+  prescreen_df$trauc <- as.numeric(prescreen_df$trauc)
+  prescreen_df$tsauc <- as.numeric(prescreen_df$tsauc)
+  
+  # Calculate mean score for each candidate
+  candidate_scores <- aggregate(score ~ candidate, data = prescreen_df, FUN = mean)
+  candidate_scores <- candidate_scores[order(candidate_scores$score, decreasing = TRUE), ]
+  
+  # Select top N candidates
+  n_select <- min(max_candidates, nrow(candidate_scores))
+  selected_candidates <- candidate_scores$candidate[1:n_select]
+  
+  cat(paste("STEPWISE_LOG:Pre-screening complete - Selected top", length(selected_candidates), "candidates\n"), file = stderr())
+  return(selected_candidates)
+}
+
+Binforward_step <- function(dat, candid, fixvar, numSeed, SplitProp, max_candidates_per_step = NULL, prescreen_seeds = NULL){
+  # Apply pre-screening if candidates exceed threshold
+  if (!is.null(max_candidates_per_step) && !is.null(prescreen_seeds) && length(candid) > max_candidates_per_step) {
+    candid <- Binprescreen_candidates(dat, candid, fixvar, prescreen_seeds, SplitProp, max_candidates_per_step)
+  }
+  
   forward_ls <- NULL
   for (s in seq(numSeed)){
     if (s %% 20 == 0 || s == 1) {
@@ -285,7 +396,7 @@ Binbackward_step <- function(dat, backcandid, fixvar, numSeed, SplitProp){
   return(AUCsumm)
 }
 
-BinTrainAUCStepwise <- function(totvar,dat,fixvar,excvar,numSeed,SplitProp,outdir){
+BinTrainAUCStepwise <- function(totvar,dat,fixvar,excvar,numSeed,SplitProp,outdir,max_candidates_per_step = NULL,prescreen_seeds = NULL){
   imtres <- NULL
   step_count <- 0
   cat(paste("STEPWISE_LOG:Starting stepwise selection with", length(totvar), "candidate variables\n"), file = stderr())
@@ -297,7 +408,7 @@ BinTrainAUCStepwise <- function(totvar,dat,fixvar,excvar,numSeed,SplitProp,outdi
     cat(paste("STEPWISE_LOG:Step", step_count, "- Forward selection with", length(candid), "candidates,", length(fixvar), "currently selected\n"), file = stderr())
     
     ##### Forward step
-    forward_ls <- Binforward_step(dat, candid, fixvar, numSeed,SplitProp)
+    forward_ls <- Binforward_step(dat, candid, fixvar, numSeed, SplitProp, max_candidates_per_step, prescreen_seeds)
     forward.trauc1<-max(as.numeric(forward_ls[,2]), na.rm = TRUE)
     forward.idx <- which.max(as.numeric(forward_ls[,2]))
     forward.var1 <- forward_ls[forward.idx,1]

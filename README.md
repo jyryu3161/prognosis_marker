@@ -68,6 +68,12 @@ binary:
   split_prop: 0.7
   num_seed: 100
   output_dir: results/binary
+  freq: 50  # Frequency threshold for candidate gene selection
+
+  # P-value adjustment and filtering (optional)
+  top_k: 1000  # Select top K genes by adjusted p-value per iteration
+  p_adjust_method: fdr  # P-value adjustment: "fdr" or "bonferroni"
+  p_threshold: 0.05  # Adjusted p-value threshold
 
 survival:
   sample_id: sample
@@ -77,7 +83,39 @@ survival:
   split_prop: 0.7
   num_seed: 100
   output_dir: results/survival
+  freq: 50  # Frequency threshold for candidate gene selection
+
+  # P-value adjustment and filtering (optional)
+  top_k: 1000  # Select top K genes by adjusted p-value per iteration
+  p_adjust_method: fdr  # P-value adjustment: "fdr" or "bonferroni"
+  p_threshold: 0.05  # Adjusted p-value threshold
 ```
+
+#### Key Configuration Parameters
+
+**Basic Parameters:**
+- `sample_id`: Column name for sample identifiers
+- `outcome` (binary): Binary outcome variable name (0/1)
+- `event` (survival): Event indicator variable name (0/1)
+- `time_variable` (survival): Survival time variable name
+- `split_prop`: Train/test split proportion (default: 0.7)
+- `num_seed`: Number of iterations for stability analysis
+- `freq`: Minimum frequency threshold for candidate selection
+
+**P-value Adjustment (NEW):**
+- `top_k`: Limits candidates to top K genes by adjusted p-value per iteration (optional)
+  - Reduces computation time when many genes are significant
+  - Default: NULL (use all significant genes)
+  - Recommended: 1000 for large gene sets
+- `p_adjust_method`: Multiple testing correction method
+  - `"fdr"`: False Discovery Rate (Benjamini-Hochberg, default, less conservative)
+  - `"bonferroni"`: Bonferroni correction (more conservative)
+- `p_threshold`: Significance threshold for adjusted p-values (default: 0.05)
+  - Genes with adjusted p-value < threshold are selected as candidates
+
+**Performance Optimization:**
+- `max_candidates_per_step`: Maximum candidates per forward step (enables pre-screening)
+- `prescreen_seeds`: Number of seeds for pre-screening evaluation
 
 ### Output Files
 

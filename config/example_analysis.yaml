@@ -13,8 +13,15 @@ binary:
   freq: 2  # Cutoff for most frequent significant genes (out of num_seed iterations). For testing with num_seed=3, use 2.
   exclude: []
   include: []
+  max_candidates_per_step: 200  # Maximum number of candidates to evaluate per forward step (pre-screening will be applied if candidates exceed this)
+  prescreen_seeds: 10  # Number of seeds to use for pre-screening (smaller = faster but less accurate)
   # Optionally constrain the candidate feature set by listing column names here.
   # features:
+
+  # P-value adjustment and filtering options (NEW)
+  # top_k: 100  # Optional: Select top K genes by adjusted p-value per iteration (default: NULL, use all significant genes)
+  # p_adjust_method: fdr  # P-value adjustment method: "fdr" (default) or "bonferroni"
+  # p_threshold: 0.05  # Adjusted p-value threshold (default: 0.05)
 
 survival:
   data_file: Example_data.csv
@@ -28,5 +35,12 @@ survival:
   freq: 2  # Cutoff for most frequent significant genes (out of num_seed iterations). For testing with num_seed=3, use 2.
   exclude: []
   include: []
+  max_candidates_per_step: 200  # Maximum number of candidates to evaluate per forward step (pre-screening will be applied if candidates exceed this)
+  prescreen_seeds: 10  # Number of seeds to use for pre-screening (smaller = faster but less accurate)
   # Optionally constrain the candidate feature set by listing column names here.
   # features:
+
+  # P-value adjustment and filtering options (NEW)
+  # top_k: 100  # Optional: Select top K genes by adjusted p-value per iteration (default: NULL, use all significant genes)
+  # p_adjust_method: fdr  # P-value adjustment method: "fdr" (default) or "bonferroni"
+  # p_threshold: 0.05  # Adjusted p-value threshold (default: 0.05)

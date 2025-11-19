@@ -2,6 +2,9 @@
 *_debug.log
 survival_debug.log
 
+data/
+results/
+
 # R artifacts
 .Rhistory
 .RData

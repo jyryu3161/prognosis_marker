@@ -1,7 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(Rscript:*)"
+      "Bash(Rscript:*)",
+      "Bash(chmod:*)",
+      "Bash(CONFIG=\"config/TCGA_ACC_analysis.yaml\")",
+      "Bash(echo:*)",
+      "Bash(python3:*)"
     ],
     "deny": [],
     "ask": []
