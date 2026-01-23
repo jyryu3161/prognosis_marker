@@ -132,6 +132,11 @@ cat(paste("STEPWISE_LOG:Found", length(Candivar), "candidate genes\n"), file = s
 
 # Candivar: Candidate gene lists for variable selection
 ############################################################################
+if (length(Candivar) == 0) {
+  cat("STEPWISE_LOG:No candidate genes found matching the criteria. Analysis cannot proceed.\n", file = stderr())
+  cat("STEPWISE_LOG:Try relaxing the p-value threshold or frequency cutoff in the configuration.\n", file = stderr())
+  quit(save = "no", status = 0)
+}
 
 #####################################################################
 ##### Run TrainAUC-based stepwise selection (Outcome: Binary)
@@ -141,6 +146,12 @@ if (!is.null(max_candidates_per_step) && !is.null(prescreen_seeds)) {
   cat(paste("STEPWISE_LOG:Pre-screening enabled - max candidates per step:", max_candidates_per_step, ", prescreen seeds:", prescreen_seeds, "\n"), file = stderr())
 }
 Result <- BinTrainAUCStepwise(Candivar, dat, fixvar, excvar, numSeed, SplitProp, outdir, max_candidates_per_step, prescreen_seeds)
+
+if (is.null(Result)) {
+  cat("STEPWISE_LOG:Stepwise selection failed to select any variables.\n", file = stderr())
+  quit(save = "no", status = 0)
+}
+
 cat(paste("STEPWISE_LOG:Stepwise selection completed\n"), file = stderr())
 #####################################################################
 
@@ -151,20 +162,25 @@ cat(paste("STEPWISE_LOG:Generating plots...\n"), file = stderr())
 # Change to output directory for saving plots
 old_dir <- getwd()
 setwd(output_dir)
-PlotBinROC(dat, numSeed, SplitProp, Result)  # Plot ROC curves from repetitions 
-cat(paste("STEPWISE_LOG:ROC curve plot saved\n"), file = stderr())
-PlotBinVarImp(dat, Result)                    # Plot Variable Importance 
-cat(paste("STEPWISE_LOG:Variable importance plot saved\n"), file = stderr())
-PlotBinDCA(dat, numSeed, SplitProp, Result)  # Decision Curve Analysis
-cat(paste("STEPWISE_LOG:DCA plot saved\n"), file = stderr())
-PlotBinAUCBoxplot(dat, numSeed, SplitProp, Result)  # AUC boxplot
-cat(paste("STEPWISE_LOG:AUC boxplot saved\n"), file = stderr())
-PlotBinProbDist(dat, numSeed, SplitProp, Result)  # Probability distribution
-cat(paste("STEPWISE_LOG:Probability distribution plot saved\n"), file = stderr())
-PlotBinConfusionMatrix(dat, numSeed, SplitProp, Result)  # Confusion matrix
-cat(paste("STEPWISE_LOG:Confusion matrix plot saved\n"), file = stderr())
-PlotBinStepwiseProcess(outdir)  # Stepwise selection process
-cat(paste("STEPWISE_LOG:Stepwise process plot saved\n"), file = stderr())
+
+# Helper to safely run plot functions
+safe_plot <- function(expr, name) {
+  tryCatch({
+    expr
+    cat(paste("STEPWISE_LOG:", name, "saved\n"), file = stderr())
+  }, error = function(e) {
+    cat(paste("STEPWISE_LOG:Warning -", name, "failed:", e$message, "\n"), file = stderr())
+  })
+}
+
+safe_plot(PlotBinROC(dat, numSeed, SplitProp, Result), "ROC curve plot")
+safe_plot(PlotBinVarImp(dat, Result), "Variable importance plot")
+safe_plot(PlotBinDCA(dat, numSeed, SplitProp, Result), "DCA plot")
+safe_plot(PlotBinAUCBoxplot(dat, numSeed, SplitProp, Result), "AUC boxplot")
+safe_plot(PlotBinProbDist(dat, numSeed, SplitProp, Result), "Probability distribution plot")
+safe_plot(PlotBinConfusionMatrix(dat, numSeed, SplitProp, Result), "Confusion matrix plot")
+safe_plot(PlotBinStepwiseProcess(outdir), "Stepwise process plot")
+
 setwd(old_dir)  # Restore original directory
 cat(paste("STEPWISE_LOG:Analysis complete!\n"), file = stderr())
 #####################################################################

@@ -130,6 +130,11 @@ Candivar <- Extract_CandidGene(dat, numSeed, SplitProp, totvar, outcandir, Freq,
 cat(paste("STEPWISE_LOG:Candidate gene extraction completed -", length(Candivar), "candidate genes selected\n"), file = stderr())
 # Candivar: Candidate gene lists for variable selection
 ############################################################################
+if (length(Candivar) == 0) {
+  cat("STEPWISE_LOG:No candidate genes found matching the criteria. Analysis cannot proceed.\n", file = stderr())
+  cat("STEPWISE_LOG:Try relaxing the p-value threshold or frequency cutoff in the configuration.\n", file = stderr())
+  quit(save = "no", status = 0)
+}
 
 #####################################################################
 ##### Run TrainAUC-based stepwise selection (Outcome: Survival time)
@@ -139,6 +144,12 @@ if (!is.null(max_candidates_per_step) && !is.null(prescreen_seeds)) {
   cat(paste("STEPWISE_LOG:Pre-screening enabled - max candidates per step:", max_candidates_per_step, ", prescreen seeds:", prescreen_seeds, "\n"), file = stderr())
 }
 Result <- SurvTrainAUCStepwise(Candivar, dat, fixvar, excvar, horizon, numSeed, SplitProp, outdir, max_candidates_per_step, prescreen_seeds)
+
+if (is.null(Result)) {
+  cat("STEPWISE_LOG:Stepwise selection failed to select any variables.\n", file = stderr())
+  quit(save = "no", status = 0)
+}
+
 cat(paste("STEPWISE_LOG:Stepwise selection completed\n"), file = stderr())
 
 # Result: Final variable selection result eg. Variable / trainAUC / testAUC
@@ -151,18 +162,24 @@ cat(paste("STEPWISE_LOG:Generating plots...\n"), file = stderr())
 # Change to output directory for saving plots
 old_dir <- getwd()
 setwd(output_dir)
-PlotSurvROC(dat, numSeed, SplitProp, Result, horizon)    # Plot ROC curves from repetitions 
-cat(paste("STEPWISE_LOG:ROC curve plot saved\n"), file = stderr())
-PlotSurVarImp(dat, Result)                      # Plot Variable Importance 
-cat(paste("STEPWISE_LOG:Variable importance plot saved\n"), file = stderr())
-PlotSurvKM(dat, numSeed, SplitProp, Result, horizon)  # Kaplan-Meier survival curves
-cat(paste("STEPWISE_LOG:Kaplan-Meier plot saved\n"), file = stderr())
-PlotSurvTimeAUC(dat, numSeed, SplitProp, Result)  # Time-dependent AUC
-cat(paste("STEPWISE_LOG:Time-dependent AUC plot saved\n"), file = stderr())
-PlotSurvRiskDist(dat, Result)  # Risk score distribution
-cat(paste("STEPWISE_LOG:Risk distribution plots saved\n"), file = stderr())
-PlotSurvStepwiseProcess(outdir)  # Stepwise selection process
-cat(paste("STEPWISE_LOG:Stepwise process plot saved\n"), file = stderr())
+
+# Helper to safely run plot functions
+safe_plot <- function(expr, name) {
+  tryCatch({
+    expr
+    cat(paste("STEPWISE_LOG:", name, "saved\n"), file = stderr())
+  }, error = function(e) {
+    cat(paste("STEPWISE_LOG:Warning -", name, "failed:", e$message, "\n"), file = stderr())
+  })
+}
+
+safe_plot(PlotSurvROC(dat, numSeed, SplitProp, Result, horizon), "ROC curve plot")
+safe_plot(PlotSurVarImp(dat, Result), "Variable importance plot")
+safe_plot(PlotSurvKM(dat, numSeed, SplitProp, Result, horizon), "Kaplan-Meier plot")
+safe_plot(PlotSurvTimeAUC(dat, numSeed, SplitProp, Result), "Time-dependent AUC plot")
+safe_plot(PlotSurvRiskDist(dat, Result), "Risk distribution plots")
+safe_plot(PlotSurvStepwiseProcess(outdir), "Stepwise process plot")
+
 setwd(old_dir)  # Restore original directory
 cat(paste("STEPWISE_LOG:Analysis complete!\n"), file = stderr())
 #####################################################################

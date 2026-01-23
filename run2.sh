@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================================
-# Run binary and survival analysis for all TCGA datasets
+# Run survival analysis for all TCGA datasets
 # ============================================================================
 
 # Colors for output
@@ -59,15 +59,12 @@ fi
 
 # Count total datasets
 TOTAL=${#CONFIG_FILES[@]}
-print_header "Running Binary and Survival Analysis for $TOTAL TCGA Datasets"
+print_header "Running Survival Analysis for $TOTAL TCGA Datasets"
 
 # Initialize counters
-BINARY_SUCCESS_COUNT=0
-BINARY_FAIL_COUNT=0
-SURVIVAL_SUCCESS_COUNT=0
-SURVIVAL_FAIL_COUNT=0
-BINARY_FAILED_DATASETS=()
-SURVIVAL_FAILED_DATASETS=()
+SUCCESS_COUNT=0
+FAIL_COUNT=0
+FAILED_DATASETS=()
 
 # Create results directory
 mkdir -p results
@@ -80,33 +77,18 @@ for i in "${!CONFIG_FILES[@]}"; do
 
     print_header "[$CURRENT/$TOTAL] Processing: $DATASET"
     print_info "Config: $CONFIG"
-
-    # Run binary analysis
-    print_info "Running binary analysis: pixi run binary -- --config $CONFIG"
-    print_info "Output: results/$DATASET/binary"
-    if pixi run binary -- --config "$CONFIG" 2>&1; then
-        print_success "$DATASET binary analysis completed"
-        BINARY_SUCCESS_COUNT=$((BINARY_SUCCESS_COUNT + 1))
-    else
-        EXIT_CODE=$?
-        print_error "$DATASET binary analysis failed (exit code: $EXIT_CODE)"
-        BINARY_FAIL_COUNT=$((BINARY_FAIL_COUNT + 1))
-        BINARY_FAILED_DATASETS+=("$DATASET")
-    fi
-
-    echo ""
+    print_info "Output: results/$DATASET/survival"
 
     # Run survival analysis
-    print_info "Running survival analysis: pixi run survival -- --config $CONFIG"
-    print_info "Output: results/$DATASET/survival"
+    print_info "Running: pixi run survival -- --config $CONFIG"
     if pixi run survival -- --config "$CONFIG" 2>&1; then
         print_success "$DATASET survival analysis completed"
-        SURVIVAL_SUCCESS_COUNT=$((SURVIVAL_SUCCESS_COUNT + 1))
+        SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
     else
         EXIT_CODE=$?
         print_error "$DATASET survival analysis failed (exit code: $EXIT_CODE)"
-        SURVIVAL_FAIL_COUNT=$((SURVIVAL_FAIL_COUNT + 1))
-        SURVIVAL_FAILED_DATASETS+=("$DATASET")
+        FAIL_COUNT=$((FAIL_COUNT + 1))
+        FAILED_DATASETS+=("$DATASET")
     fi
 
     echo ""
@@ -114,34 +96,17 @@ done
 
 # Print summary
 print_header "Analysis Summary"
-echo -e "${BLUE}Binary Analysis:${NC}"
-echo -e "  ${GREEN}✓ Successful: $BINARY_SUCCESS_COUNT${NC}"
-echo -e "  ${RED}✗ Failed: $BINARY_FAIL_COUNT${NC}"
-echo ""
-echo -e "${BLUE}Survival Analysis:${NC}"
-echo -e "  ${GREEN}✓ Successful: $SURVIVAL_SUCCESS_COUNT${NC}"
-echo -e "  ${RED}✗ Failed: $SURVIVAL_FAIL_COUNT${NC}"
+echo -e "${GREEN}✓ Successful: $SUCCESS_COUNT${NC}"
+echo -e "${RED}✗ Failed: $FAIL_COUNT${NC}"
 echo ""
 
-EXIT_CODE=0
-if [ $BINARY_FAIL_COUNT -gt 0 ]; then
-    print_error "Failed binary analyses:"
-    for dataset in "${BINARY_FAILED_DATASETS[@]}"; do
+if [ $FAIL_COUNT -gt 0 ]; then
+    print_error "Failed datasets:"
+    for dataset in "${FAILED_DATASETS[@]}"; do
         echo "  - $dataset"
     done
-    EXIT_CODE=1
+    exit 1
+else
+    print_success "All survival analyses completed successfully!"
 fi
 
-if [ $SURVIVAL_FAIL_COUNT -gt 0 ]; then
-    print_error "Failed survival analyses:"
-    for dataset in "${SURVIVAL_FAILED_DATASETS[@]}"; do
-        echo "  - $dataset"
-    done
-    EXIT_CODE=1
-fi
-
-if [ $EXIT_CODE -eq 0 ]; then
-    print_success "All analyses completed successfully!"
-fi
-
-exit $EXIT_CODE

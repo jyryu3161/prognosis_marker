@@ -535,6 +535,10 @@ Survbackward_step <- function(dat, backcandid, fixvar, horizon, numSeed, SplitPr
 }
 
 SurvTrainAUCStepwise <- function(totvar,dat,fixvar,excvar,horizon,numSeed,SplitProp,outdir,max_candidates_per_step = NULL,prescreen_seeds = NULL){
+  if (is.null(totvar) || length(totvar) == 0) {
+    cat("STEPWISE_LOG:No candidate variables provided for stepwise selection.\n", file = stderr())
+    return(NULL)
+  }
   imtres <- NULL
   step_count <- 0
   while (length(setdiff(fixvar,excvar))<length(totvar)){

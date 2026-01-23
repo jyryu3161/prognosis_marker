@@ -17,8 +17,8 @@ binary:
   # features:
 
   # P-value adjustment and filtering options
-  top_k: 1000  # Select top 1000 genes by adjusted p-value per iteration
-  p_adjust_method: fdr  # P-value adjustment method: "fdr" or "bonferroni"
+  top_k: 100  # Select top 1000 genes by adjusted p-value per iteration
+  p_adjust_method: none  # P-value adjustment method: "fdr" or "bonferroni"
   p_threshold: 0.05  # Adjusted p-value threshold
 
 survival:
@@ -37,6 +37,6 @@ survival:
   # features:
 
   # P-value adjustment and filtering options
-  top_k: 1000  # Select top 1000 genes by adjusted p-value per iteration
-  p_adjust_method: fdr  # P-value adjustment method: "fdr" or "bonferroni"
+  top_k: 100  # Select top 1000 genes by adjusted p-value per iteration
+  p_adjust_method: none  # P-value adjustment method: "fdr" or "bonferroni"
   p_threshold: 0.05  # Adjusted p-value threshold

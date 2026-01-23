@@ -397,6 +397,10 @@ Binbackward_step <- function(dat, backcandid, fixvar, numSeed, SplitProp){
 }
 
 BinTrainAUCStepwise <- function(totvar,dat,fixvar,excvar,numSeed,SplitProp,outdir,max_candidates_per_step = NULL,prescreen_seeds = NULL){
+  if (is.null(totvar) || length(totvar) == 0) {
+    cat("STEPWISE_LOG:No candidate variables provided for stepwise selection.\n", file = stderr())
+    return(NULL)
+  }
   imtres <- NULL
   step_count <- 0
   cat(paste("STEPWISE_LOG:Starting stepwise selection with", length(totvar), "candidate variables\n"), file = stderr())
