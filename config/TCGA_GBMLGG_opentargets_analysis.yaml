@@ -1,0 +1,40 @@
+# Open Targets evidence-filtered configuration for TCGA_GBMLGG
+# Disease: glioma (EFO_0005543)
+# Generated from: TCGA_GBMLGG_analysis.yaml
+workdir: "."
+data_file: data/TCGA_GBMLGG_data.csv
+binary:
+  data_file: data/TCGA_GBMLGG_data.csv
+  sample_id: sample
+  outcome: OS
+  time_variable: OS.year
+  split_prop: 0.7
+  num_seed: 100
+  output_dir: results/TCGA_GBMLGG_opentargets/binary
+  freq: 50
+  exclude: []
+  include: []
+  top_k: 100
+  p_adjust_method: "none"
+  p_threshold: 0.05
+survival:
+  data_file: data/TCGA_GBMLGG_data.csv
+  sample_id: sample
+  time_variable: OS.year
+  event: OS
+  horizon: 5
+  split_prop: 0.7
+  num_seed: 100
+  output_dir: results/TCGA_GBMLGG_opentargets/survival
+  freq: 50
+  exclude: []
+  include: []
+  top_k: 100
+  p_adjust_method: "none"
+  p_threshold: 0.05
+evidence:
+  gene_file: evidence/TCGA_GBMLGG_opentargets_genes.csv
+  score_threshold: 0.05
+  source: Open Targets Platform
+  disease_name: glioma
+  efo_id: EFO_0005543

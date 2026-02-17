@@ -1,0 +1,7 @@
+gene_symbol,ensembl_id,score,disease_name,efo_id
+SDHB,ENSG00000117118,0.8183122804487251,pheochromocytoma/paraganglioma syndrome 4,MONDO_0007273
+SDHD,ENSG00000204370,0.3400134663099256,pheochromocytoma/paraganglioma syndrome 4,MONDO_0007273
+PADI2,ENSG00000117115,0.3326218692162316,pheochromocytoma/paraganglioma syndrome 4,MONDO_0007273
+SDHA,ENSG00000073578,0.11826555349910459,pheochromocytoma/paraganglioma syndrome 4,MONDO_0007273
+MEN1,ENSG00000133895,0.05912618180236759,pheochromocytoma/paraganglioma syndrome 4,MONDO_0007273
+PTEN,ENSG00000171862,0.05049318034933754,pheochromocytoma/paraganglioma syndrome 4,MONDO_0007273

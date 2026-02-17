@@ -1,0 +1,665 @@
+{
+  "version": "2.0",
+  "lastUpdated": "2026-02-17T05:15:17.709Z",
+  "activeFeatures": [
+    "gui",
+    "stores",
+    "tauri",
+    "layout",
+    "setup",
+    "commands",
+    "src-tauri",
+    "results",
+    "__mocks__",
+    "__tests__"
+  ],
+  "primaryFeature": "gui",
+  "features": {
+    "gui": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-02-17T03:26:39.629Z",
+        "lastUpdated": "2026-02-17T04:41:57.576Z"
+      },
+      "lastFile": "/home/ubuntu/projects/prognosis_marker/gui/vitest.config.ts"
+    },
+    "stores": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-02-17T03:27:48.272Z",
+        "lastUpdated": "2026-02-17T04:41:52.481Z"
+      },
+      "lastFile": "/home/ubuntu/projects/prognosis_marker/gui/src/stores/configStore.ts"
+    },
+    "tauri": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-02-17T03:27:57.024Z",
+        "lastUpdated": "2026-02-17T04:27:11.004Z"
+      },
+      "lastFile": "/home/ubuntu/projects/prognosis_marker/gui/src/lib/tauri/commands.ts"
+    },
+    "layout": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-02-17T03:28:08.111Z",
+        "lastUpdated": "2026-02-17T03:28:08.111Z"
+      },
+      "lastFile": "/home/ubuntu/projects/prognosis_marker/gui/src/components/layout/Sidebar.tsx"
+    },
+    "setup": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-02-17T03:28:28.848Z",
+        "lastUpdated": "2026-02-17T04:28:30.000Z"
+      },
+      "lastFile": "/home/ubuntu/projects/prognosis_marker/gui/src/components/setup/RunActionBar.tsx"
+    },
+    "commands": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-02-17T03:28:41.633Z",
+        "lastUpdated": "2026-02-17T05:14:49.092Z"
+      },
+      "lastFile": "/home/ubuntu/projects/prognosis_marker/gui/src-tauri/src/commands/analysis.rs"
+    },
+    "src-tauri": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-02-17T03:28:42.288Z",
+        "lastUpdated": "2026-02-17T05:12:47.275Z"
+      },
+      "lastFile": "/home/ubuntu/projects/prognosis_marker/gui/src-tauri/src/models/error.rs"
+    },
+    "results": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-02-17T04:27:47.385Z",
+        "lastUpdated": "2026-02-17T04:30:51.588Z"
+      },
+      "lastFile": "/home/ubuntu/projects/prognosis_marker/gui/src/components/results/AucTable.tsx"
+    },
+    "__mocks__": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-02-17T04:42:06.183Z",
+        "lastUpdated": "2026-02-17T04:42:06.183Z"
+      },
+      "lastFile": "/home/ubuntu/projects/prognosis_marker/gui/src/__tests__/__mocks__/tauri-api.ts"
+    },
+    "__tests__": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-02-17T05:04:57.098Z",
+        "lastUpdated": "2026-02-17T05:15:17.709Z"
+      },
+      "lastFile": "/home/ubuntu/projects/prognosis_marker/gui/src/__tests__/components.test.tsx"
+    }
+  },
+  "pipeline": {
+    "currentPhase": 1,
+    "level": "Dynamic",
+    "phaseHistory": []
+  },
+  "session": {
+    "startedAt": "2026-02-17T03:04:49.518Z",
+    "onboardingCompleted": false,
+    "lastActivity": "2026-02-17T05:15:17.709Z"
+  },
+  "history": [
+    {
+      "timestamp": "2026-02-17T03:26:39.629Z",
+      "feature": "gui",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T03:27:26.922Z",
+      "feature": "gui",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T03:27:29.698Z",
+      "feature": "gui",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T03:27:30.409Z",
+      "feature": "gui",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T03:27:48.272Z",
+      "feature": "stores",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T03:27:50.865Z",
+      "feature": "stores",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T03:27:57.024Z",
+      "feature": "tauri",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T03:28:08.111Z",
+      "feature": "layout",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T03:28:15.332Z",
+      "feature": "gui",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T03:28:17.386Z",
+      "feature": "gui",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T03:28:22.133Z",
+      "feature": "gui",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T03:28:28.848Z",
+      "feature": "setup",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T03:28:36.991Z",
+      "feature": "gui",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T03:28:41.633Z",
+      "feature": "commands",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T03:28:42.289Z",
+      "feature": "src-tauri",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T03:28:43.301Z",
+      "feature": "src-tauri",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T03:28:56.584Z",
+      "feature": "src-tauri",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T03:29:02.117Z",
+      "feature": "src-tauri",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T03:29:13.240Z",
+      "feature": "commands",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T03:29:22.538Z",
+      "feature": "commands",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T03:29:33.973Z",
+      "feature": "commands",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T03:29:44.560Z",
+      "feature": "commands",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T03:29:47.311Z",
+      "feature": "src-tauri",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T03:29:52.158Z",
+      "feature": "src-tauri",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T03:29:56.051Z",
+      "feature": "src-tauri",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T03:32:06.316Z",
+      "feature": "src-tauri",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T03:32:24.901Z",
+      "feature": "commands",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T03:32:32.050Z",
+      "feature": "commands",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T03:32:40.768Z",
+      "feature": "commands",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T03:48:49.695Z",
+      "feature": "commands",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T03:50:37.243Z",
+      "feature": "gui",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T03:50:47.030Z",
+      "feature": "setup",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T03:50:55.409Z",
+      "feature": "setup",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T03:51:07.686Z",
+      "feature": "setup",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T03:51:23.510Z",
+      "feature": "setup",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T03:51:33.575Z",
+      "feature": "setup",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T03:51:41.177Z",
+      "feature": "gui",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T03:52:08.437Z",
+      "feature": "gui",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T03:52:14.396Z",
+      "feature": "gui",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T03:52:26.426Z",
+      "feature": "stores",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T03:52:34.870Z",
+      "feature": "gui",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T04:24:37.512Z",
+      "feature": "gui-desktop-app - Gap Analysis",
+      "phase": "act",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T04:26:13.604Z",
+      "feature": "commands",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T04:26:22.663Z",
+      "feature": "commands",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T04:26:34.595Z",
+      "feature": "commands",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T04:26:42.476Z",
+      "feature": "commands",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T04:26:47.427Z",
+      "feature": "src-tauri",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T04:26:53.070Z",
+      "feature": "src-tauri",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T04:27:11.004Z",
+      "feature": "tauri",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T04:27:28.495Z",
+      "feature": "setup",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T04:27:47.385Z",
+      "feature": "results",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T04:28:07.047Z",
+      "feature": "setup",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T04:28:30.000Z",
+      "feature": "setup",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T04:28:38.584Z",
+      "feature": "gui",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T04:29:04.413Z",
+      "feature": "gui",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T04:29:10.253Z",
+      "feature": "gui",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T04:29:16.409Z",
+      "feature": "gui",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T04:29:40.678Z",
+      "feature": "commands",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T04:30:00.091Z",
+      "feature": "commands",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T04:30:43.826Z",
+      "feature": "results",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T04:30:51.588Z",
+      "feature": "results",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T04:40:35.062Z",
+      "feature": "commands",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T04:40:36.699Z",
+      "feature": "commands",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T04:40:44.096Z",
+      "feature": "commands",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T04:40:57.890Z",
+      "feature": "commands",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T04:41:11.825Z",
+      "feature": "commands",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T04:41:20.824Z",
+      "feature": "src-tauri",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T04:41:45.642Z",
+      "feature": "gui",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T04:41:52.481Z",
+      "feature": "stores",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T04:41:57.576Z",
+      "feature": "gui",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T04:42:06.183Z",
+      "feature": "__mocks__",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T05:04:26.605Z",
+      "feature": "commands",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T05:04:34.228Z",
+      "feature": "commands",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T05:04:38.848Z",
+      "feature": "commands",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T05:04:45.263Z",
+      "feature": "commands",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T05:04:49.842Z",
+      "feature": "commands",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T05:04:57.098Z",
+      "feature": "__tests__",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T05:12:41.057Z",
+      "feature": "src-tauri",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T05:12:47.275Z",
+      "feature": "src-tauri",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T05:12:53.129Z",
+      "feature": "commands",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T05:12:58.049Z",
+      "feature": "commands",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T05:14:49.092Z",
+      "feature": "commands",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T05:15:09.853Z",
+      "feature": "__tests__",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-02-17T05:15:17.709Z",
+      "feature": "__tests__",
+      "phase": "do",
+      "action": "updated"
+    }
+  ]
+}

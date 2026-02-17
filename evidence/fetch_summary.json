@@ -1,0 +1,244 @@
+{
+  "fetch_date": "2026-02-14T22:16:54.895088",
+  "score_threshold": 0.05,
+  "datasets": {
+    "TCGA_ACC": {
+      "efo_id": "EFO_1000796",
+      "disease_name": "adrenal cortex carcinoma",
+      "gene_count": 423,
+      "total_associated": 4187,
+      "output_file": "evidence/TCGA_ACC_opentargets_genes.csv"
+    },
+    "TCGA_BLCA": {
+      "efo_id": "EFO_0006544",
+      "disease_name": "bladder transitional cell carcinoma",
+      "gene_count": 972,
+      "total_associated": 4557,
+      "output_file": "evidence/TCGA_BLCA_opentargets_genes.csv"
+    },
+    "TCGA_BRCA": {
+      "efo_id": "EFO_0000305",
+      "disease_name": "breast carcinoma",
+      "gene_count": 3125,
+      "total_associated": 12295,
+      "output_file": "evidence/TCGA_BRCA_opentargets_genes.csv"
+    },
+    "TCGA_CESC": {
+      "efo_id": "EFO_1000172",
+      "disease_name": "cervical squamous cell carcinoma",
+      "gene_count": 773,
+      "total_associated": 3168,
+      "output_file": "evidence/TCGA_CESC_opentargets_genes.csv"
+    },
+    "TCGA_CHOL": {
+      "efo_id": "EFO_0005221",
+      "disease_name": "cholangiocarcinoma",
+      "gene_count": 783,
+      "total_associated": 5011,
+      "output_file": "evidence/TCGA_CHOL_opentargets_genes.csv"
+    },
+    "TCGA_COAD": {
+      "efo_id": "EFO_1001949",
+      "disease_name": "colon adenocarcinoma",
+      "gene_count": 809,
+      "total_associated": 4185,
+      "output_file": "evidence/TCGA_COAD_opentargets_genes.csv"
+    },
+    "TCGA_COADREAD": {
+      "efo_id": "EFO_1001951",
+      "disease_name": "colorectal carcinoma",
+      "gene_count": 4147,
+      "total_associated": 12237,
+      "output_file": "evidence/TCGA_COADREAD_opentargets_genes.csv"
+    },
+    "TCGA_DLBC": {
+      "efo_id": "EFO_0000403",
+      "disease_name": "diffuse large B-cell lymphoma",
+      "gene_count": 1270,
+      "total_associated": 4818,
+      "output_file": "evidence/TCGA_DLBC_opentargets_genes.csv"
+    },
+    "TCGA_ESCA": {
+      "efo_id": "EFO_0002916",
+      "disease_name": "esophageal carcinoma",
+      "gene_count": 2264,
+      "total_associated": 7231,
+      "output_file": "evidence/TCGA_ESCA_opentargets_genes.csv"
+    },
+    "TCGA_GBMLGG": {
+      "efo_id": "EFO_0005543",
+      "disease_name": "glioma",
+      "gene_count": 3947,
+      "total_associated": 12223,
+      "output_file": "evidence/TCGA_GBMLGG_opentargets_genes.csv"
+    },
+    "TCGA_HNSC": {
+      "efo_id": "EFO_0000181",
+      "disease_name": "head and neck squamous cell carcinoma",
+      "gene_count": 2495,
+      "total_associated": 8715,
+      "output_file": "evidence/TCGA_HNSC_opentargets_genes.csv"
+    },
+    "TCGA_KICH": {
+      "efo_id": "EFO_0000335",
+      "disease_name": "chromophobe renal cell carcinoma",
+      "gene_count": 247,
+      "total_associated": 2408,
+      "output_file": "evidence/TCGA_KICH_opentargets_genes.csv"
+    },
+    "TCGA_KIRC": {
+      "efo_id": "EFO_0000349",
+      "disease_name": "clear cell renal carcinoma",
+      "gene_count": 920,
+      "total_associated": 5057,
+      "output_file": "evidence/TCGA_KIRC_opentargets_genes.csv"
+    },
+    "TCGA_KIRP": {
+      "efo_id": "EFO_0000640",
+      "disease_name": "papillary renal cell carcinoma",
+      "gene_count": 615,
+      "total_associated": 2322,
+      "output_file": "evidence/TCGA_KIRP_opentargets_genes.csv"
+    },
+    "TCGA_LAML": {
+      "efo_id": "EFO_0000222",
+      "disease_name": "acute myeloid leukemia",
+      "gene_count": 2534,
+      "total_associated": 10425,
+      "output_file": "evidence/TCGA_LAML_opentargets_genes.csv"
+    },
+    "TCGA_LIHC": {
+      "efo_id": "EFO_0000182",
+      "disease_name": "hepatocellular carcinoma",
+      "gene_count": 5142,
+      "total_associated": 13741,
+      "output_file": "evidence/TCGA_LIHC_opentargets_genes.csv"
+    },
+    "TCGA_LUAD": {
+      "efo_id": "EFO_0000571",
+      "disease_name": "lung adenocarcinoma",
+      "gene_count": 2461,
+      "total_associated": 10445,
+      "output_file": "evidence/TCGA_LUAD_opentargets_genes.csv"
+    },
+    "TCGA_LUNG": {
+      "efo_id": "EFO_0003060",
+      "disease_name": "non-small cell lung carcinoma",
+      "gene_count": 4180,
+      "total_associated": 13297,
+      "output_file": "evidence/TCGA_LUNG_opentargets_genes.csv"
+    },
+    "TCGA_LUSC": {
+      "efo_id": "EFO_0000708",
+      "disease_name": "squamous cell lung carcinoma",
+      "gene_count": 890,
+      "total_associated": 4109,
+      "output_file": "evidence/TCGA_LUSC_opentargets_genes.csv"
+    },
+    "TCGA_MESO": {
+      "efo_id": "EFO_0000588",
+      "disease_name": "mesothelioma",
+      "gene_count": 595,
+      "total_associated": 3281,
+      "output_file": "evidence/TCGA_MESO_opentargets_genes.csv"
+    },
+    "TCGA_OV": {
+      "efo_id": "EFO_1000043",
+      "disease_name": "ovarian serous cystadenocarcinoma",
+      "gene_count": 87,
+      "total_associated": 958,
+      "output_file": "evidence/TCGA_OV_opentargets_genes.csv"
+    },
+    "TCGA_PAAD": {
+      "efo_id": "EFO_1000044",
+      "disease_name": "pancreatic adenocarcinoma",
+      "gene_count": 1082,
+      "total_associated": 6569,
+      "output_file": "evidence/TCGA_PAAD_opentargets_genes.csv"
+    },
+    "TCGA_PCPG": {
+      "efo_id": "MONDO_0007273",
+      "disease_name": "pheochromocytoma/paraganglioma syndrome 4",
+      "gene_count": 6,
+      "total_associated": 17,
+      "output_file": "evidence/TCGA_PCPG_opentargets_genes.csv"
+    },
+    "TCGA_PRAD": {
+      "efo_id": "EFO_0000673",
+      "disease_name": "prostate adenocarcinoma",
+      "gene_count": 951,
+      "total_associated": 4557,
+      "output_file": "evidence/TCGA_PRAD_opentargets_genes.csv"
+    },
+    "TCGA_READ": {
+      "efo_id": "EFO_0005631",
+      "disease_name": "rectal adenocarcinoma",
+      "gene_count": 735,
+      "total_associated": 2129,
+      "output_file": "evidence/TCGA_READ_opentargets_genes.csv"
+    },
+    "TCGA_SARC": {
+      "efo_id": "EFO_0000691",
+      "disease_name": "sarcoma",
+      "gene_count": 2578,
+      "total_associated": 10664,
+      "output_file": "evidence/TCGA_SARC_opentargets_genes.csv"
+    },
+    "TCGA_SKCM": {
+      "efo_id": "EFO_0000389",
+      "disease_name": "cutaneous melanoma",
+      "gene_count": 1129,
+      "total_associated": 3609,
+      "output_file": "evidence/TCGA_SKCM_opentargets_genes.csv"
+    },
+    "TCGA_STAD": {
+      "efo_id": "EFO_0000503",
+      "disease_name": "gastric adenocarcinoma",
+      "gene_count": 930,
+      "total_associated": 4713,
+      "output_file": "evidence/TCGA_STAD_opentargets_genes.csv"
+    },
+    "TCGA_TGCT": {
+      "efo_id": "EFO_1000566",
+      "disease_name": "Testicular Germ Cell Tumor",
+      "gene_count": 321,
+      "total_associated": 1995,
+      "output_file": "evidence/TCGA_TGCT_opentargets_genes.csv"
+    },
+    "TCGA_THCA": {
+      "efo_id": "EFO_0002892",
+      "disease_name": "thyroid carcinoma",
+      "gene_count": 1454,
+      "total_associated": 6081,
+      "output_file": "evidence/TCGA_THCA_opentargets_genes.csv"
+    },
+    "TCGA_THYM": {
+      "efo_id": "EFO_1000581",
+      "disease_name": "Thymoma",
+      "gene_count": 191,
+      "total_associated": 2277,
+      "output_file": "evidence/TCGA_THYM_opentargets_genes.csv"
+    },
+    "TCGA_UCEC": {
+      "efo_id": "MONDO_0000553",
+      "disease_name": "uterine corpus endometrial carcinoma",
+      "gene_count": 0,
+      "total_associated": 1257,
+      "output_file": "evidence/TCGA_UCEC_opentargets_genes.csv"
+    },
+    "TCGA_UCS": {
+      "efo_id": "EFO_1000613",
+      "disease_name": "Uterine Carcinosarcoma",
+      "gene_count": 621,
+      "total_associated": 1235,
+      "output_file": "evidence/TCGA_UCS_opentargets_genes.csv"
+    },
+    "TCGA_UVM": {
+      "efo_id": "EFO_1000616",
+      "disease_name": "Uveal Melanoma",
+      "gene_count": 265,
+      "total_associated": 652,
+      "output_file": "evidence/TCGA_UVM_opentargets_genes.csv"
+    }
+  }
+}

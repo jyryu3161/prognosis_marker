@@ -1,0 +1,138 @@
+{
+  "TCGA_ACC": {
+    "disease_name": "adrenocortical carcinoma",
+    "efo_id": "EFO_1000796"
+  },
+  "TCGA_BLCA": {
+    "disease_name": "bladder urothelial carcinoma",
+    "efo_id": "EFO_0006544"
+  },
+  "TCGA_BRCA": {
+    "disease_name": "breast carcinoma",
+    "efo_id": "EFO_0000305"
+  },
+  "TCGA_CESC": {
+    "disease_name": "cervical squamous cell carcinoma",
+    "efo_id": "EFO_1000172"
+  },
+  "TCGA_CHOL": {
+    "disease_name": "cholangiocarcinoma",
+    "efo_id": "EFO_0005221"
+  },
+  "TCGA_COAD": {
+    "disease_name": "colon adenocarcinoma",
+    "efo_id": "EFO_1001949"
+  },
+  "TCGA_COADREAD": {
+    "disease_name": "colorectal carcinoma",
+    "efo_id": "EFO_1001951"
+  },
+  "TCGA_DLBC": {
+    "disease_name": "diffuse large B-cell lymphoma",
+    "efo_id": "EFO_0000403"
+  },
+  "TCGA_ESCA": {
+    "disease_name": "esophageal carcinoma",
+    "efo_id": "EFO_0002916"
+  },
+  "TCGA_GBMLGG": {
+    "disease_name": "glioma",
+    "efo_id": "EFO_0005543"
+  },
+  "TCGA_HNSC": {
+    "disease_name": "head and neck squamous cell carcinoma",
+    "efo_id": "EFO_0000181"
+  },
+  "TCGA_KICH": {
+    "disease_name": "chromophobe renal cell carcinoma",
+    "efo_id": "EFO_0000335"
+  },
+  "TCGA_KIRC": {
+    "disease_name": "kidney renal clear cell carcinoma",
+    "efo_id": "EFO_0000349"
+  },
+  "TCGA_KIRP": {
+    "disease_name": "kidney renal papillary cell carcinoma",
+    "efo_id": "EFO_0000640"
+  },
+  "TCGA_LAML": {
+    "disease_name": "acute myeloid leukemia",
+    "efo_id": "EFO_0000222"
+  },
+  "TCGA_LIHC": {
+    "disease_name": "liver hepatocellular carcinoma",
+    "efo_id": "EFO_0000182"
+  },
+  "TCGA_LUAD": {
+    "disease_name": "lung adenocarcinoma",
+    "efo_id": "EFO_0000571"
+  },
+  "TCGA_LUNG": {
+    "disease_name": "non-small cell lung cancer",
+    "efo_id": "EFO_0003060"
+  },
+  "TCGA_LUSC": {
+    "disease_name": "lung squamous cell carcinoma",
+    "efo_id": "EFO_0000708"
+  },
+  "TCGA_MESO": {
+    "disease_name": "mesothelioma",
+    "efo_id": "EFO_0000588"
+  },
+  "TCGA_OV": {
+    "disease_name": "ovarian serous cystadenocarcinoma",
+    "efo_id": "EFO_1000043"
+  },
+  "TCGA_PAAD": {
+    "disease_name": "pancreatic adenocarcinoma",
+    "efo_id": "EFO_1000044"
+  },
+  "TCGA_PCPG": {
+    "disease_name": "pheochromocytoma and paraganglioma",
+    "efo_id": "MONDO_0007273"
+  },
+  "TCGA_PRAD": {
+    "disease_name": "prostate adenocarcinoma",
+    "efo_id": "EFO_0000673"
+  },
+  "TCGA_READ": {
+    "disease_name": "rectal adenocarcinoma",
+    "efo_id": "EFO_0005631"
+  },
+  "TCGA_SARC": {
+    "disease_name": "sarcoma",
+    "efo_id": "EFO_0000691"
+  },
+  "TCGA_SKCM": {
+    "disease_name": "skin cutaneous melanoma",
+    "efo_id": "EFO_0000389"
+  },
+  "TCGA_STAD": {
+    "disease_name": "stomach adenocarcinoma",
+    "efo_id": "EFO_0000503"
+  },
+  "TCGA_TGCT": {
+    "disease_name": "testicular germ cell tumor",
+    "efo_id": "EFO_1000566"
+  },
+  "TCGA_THCA": {
+    "disease_name": "thyroid carcinoma",
+    "efo_id": "EFO_0002892"
+  },
+  "TCGA_THYM": {
+    "disease_name": "thymoma",
+    "efo_id": "EFO_1000581"
+  },
+  "TCGA_UCEC": {
+    "disease_name": "uterine corpus endometrial carcinoma",
+    "efo_id": "MONDO_0000553"
+  },
+  "TCGA_UCS": {
+    "disease_name": "uterine carcinosarcoma",
+    "efo_id": "EFO_1000613"
+  },
+  "TCGA_UVM": {
+    "disease_name": "uveal melanoma",
+    "efo_id": "EFO_1000616"
+  }
+}

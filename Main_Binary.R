@@ -105,6 +105,27 @@ if (!is.null(bin_config$features) && length(bin_config$features) > 0) {
   cat(paste("STEPWISE_LOG:Using", length(totvar), "features (auto-selected from", ncol(dat), "total columns)\n"), file = stderr())
 }
 
+# Apply Open Targets evidence-based gene filtering if configured
+if (!is.null(config$evidence) && !is.null(config$evidence$gene_file)) {
+  evidence_file <- config$evidence$gene_file
+  if (!file.exists(evidence_file)) {
+    stop(paste("Evidence gene file not found:", evidence_file))
+  }
+  evidence_genes <- read.csv(evidence_file, header = TRUE, stringsAsFactors = FALSE)
+  score_threshold <- ifelse(is.null(config$evidence$score_threshold), 0.0,
+                            as.numeric(config$evidence$score_threshold))
+  evidence_genes <- evidence_genes[evidence_genes$score >= score_threshold, ]
+  evidence_symbols <- evidence_genes$gene_symbol
+  filtered_totvar <- intersect(totvar, evidence_symbols)
+  cat(paste("STEPWISE_LOG:Evidence filtering:", length(evidence_symbols),
+            "evidence genes,", length(totvar), "data genes,",
+            length(filtered_totvar), "intersection\n"), file = stderr())
+  if (length(filtered_totvar) == 0) {
+    stop("No genes remaining after evidence filtering.")
+  }
+  totvar <- filtered_totvar
+}
+
 # Create output directories
 outcandir <- file.path(output_dir, "ExtBinCandidat")
 outdir <- file.path(output_dir, "StepBin")
