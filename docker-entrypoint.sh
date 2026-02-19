@@ -11,7 +11,7 @@ case "$1" in
     exec Rscript /app/Main_Survival.R "$@"
     ;;
   --help|"")
-    echo "Prognosis Marker - AUC-driven stepwise variable selection"
+    echo "PROMISE - PROgnostic Marker Identification and Survival Evaluation"
     echo ""
     echo "Usage:"
     echo "  docker run --rm -v \$(pwd):/work jyryu3161/prognosis-marker binary   --config=/work/config.yaml"

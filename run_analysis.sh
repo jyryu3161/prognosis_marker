@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ============================================================================
-# Prognosis Marker - Analysis Runner Script
+# PROMISE - Analysis Runner Script
 # ============================================================================
 # Runs binary or survival workflows using pixi
 #

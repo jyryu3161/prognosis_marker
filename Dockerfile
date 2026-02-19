@@ -1,7 +1,7 @@
 FROM rocker/r-ver:4.3.3
 
 LABEL maintainer="jyryu3161"
-LABEL description="Prognosis Marker - AUC-driven stepwise variable selection for binary and survival analysis"
+LABEL description="PROMISE - PROgnostic Marker Identification and Survival Evaluation"
 
 # System dependencies for R packages
 RUN apt-get update && apt-get install -y --no-install-recommends \

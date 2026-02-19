@@ -1,6 +1,8 @@
-# Prognosis Marker
+# PROMISE
 
-Prognostic gene signature discovery tool using AUC-driven stepwise variable selection. Supports binary classification (logistic regression) and survival analysis (Cox proportional hazards) with reproducible train/test splitting.
+**PROgnostic Marker Identification and Survival Evaluation**
+
+AUC-driven stepwise variable selection for prognostic gene signature discovery. Supports binary classification (logistic regression) and survival analysis (Cox proportional hazards) with reproducible train/test splitting.
 
 ## Features
 
