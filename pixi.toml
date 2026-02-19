@@ -2,7 +2,7 @@
 name = "prognosis-marker"
 version = "0.1.0"
 channels = ["conda-forge"]
-platforms = ["linux-64", "osx-64", "osx-arm64"]
+platforms = ["linux-64", "osx-64", "osx-arm64", "win-64"]
 
 description = "PROMISE - PROgnostic Marker Identification and Survival Evaluation"
 
