@@ -28,16 +28,16 @@ if (!file.exists(config_file)) {
 
 config <- yaml::read_yaml(config_file)
 
+# Source R script (before setwd so source() finds files relative to project root / /app in Docker)
+cat(paste("STEPWISE_LOG:Starting Binary Classification Analysis\n"), file = stderr())
+source('Binary_TrainAUC_StepwiseSelection.R')
+
 # Get working directory
 if (!is.null(config$workdir)) {
   setwd(config$workdir)
 } else {
   setwd(".")
 }
-
-# Source R script
-cat(paste("STEPWISE_LOG:Starting Binary Classification Analysis\n"), file = stderr())
-source('Binary_TrainAUC_StepwiseSelection.R')
 
 # Get binary config
 if (is.null(config$binary)) {

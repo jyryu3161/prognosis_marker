@@ -1,0 +1,13 @@
+.pixi/
+gui/
+node_modules/
+.git/
+.github/
+docs/
+evidence/
+results/
+*.log
+*.md
+.bkit/
+.dockerignore
+Dockerfile

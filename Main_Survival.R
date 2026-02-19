@@ -29,15 +29,16 @@ if (!file.exists(config_file)) {
 
 config <- yaml::read_yaml(config_file)
 
+# Source R script (before setwd so source() finds files relative to project root / /app in Docker)
+cat(paste("STEPWISE_LOG:Starting Survival Analysis\n"), file = stderr())
+source('Survival_TrainAUC_StepwiseSelection.R')
+
 # Get working directory
 if (!is.null(config$workdir)) {
   setwd(config$workdir)
 } else {
   setwd(".")
 }
-
-cat(paste("STEPWISE_LOG:Starting Survival Analysis\n"), file = stderr())
-source('Survival_TrainAUC_StepwiseSelection.R')
 
 # Get survival config
 if (is.null(config$survival)) {
