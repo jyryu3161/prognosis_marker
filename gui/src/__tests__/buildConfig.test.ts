@@ -110,7 +110,7 @@ describe("buildConfig", () => {
     const state = useAnalysisStore.getState();
     expect(state.dataFile).toBe("");
     expect(state.splitProp).toBe(0.7);
-    expect(state.numSeed).toBe(100);
+    expect(state.numSeed).toBe(10);
     expect(state.status).toBe("idle");
   });
 });

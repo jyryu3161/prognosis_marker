@@ -55,27 +55,22 @@ describe("Sidebar", () => {
     expect(onPageChange).toHaveBeenCalledWith("settings");
   });
 
-  it("disables Results when analysis not running", () => {
-    const onPageChange = vi.fn();
-    render(<Sidebar currentPage="setup" onPageChange={onPageChange} analysisRunning={false} />);
-
-    const resultsBtn = screen.getByText("Results").closest("button");
-    expect(resultsBtn?.disabled).toBe(true);
-  });
-
-  it("enables Results when analysis is running", () => {
-    const onPageChange = vi.fn();
-    render(<Sidebar currentPage="setup" onPageChange={onPageChange} analysisRunning={true} />);
-
-    const resultsBtn = screen.getByText("Results").closest("button");
-    expect(resultsBtn?.disabled).toBe(false);
-  });
-
   it("shows app title and version", () => {
     const onPageChange = vi.fn();
     render(<Sidebar currentPage="setup" onPageChange={onPageChange} analysisRunning={false} />);
 
     expect(screen.getByText("Prognosis Marker")).toBeDefined();
     expect(screen.getByText("v0.1.0")).toBeDefined();
+  });
+
+  it("shows running indicator when analysis is active", () => {
+    const onPageChange = vi.fn();
+    const { container } = render(
+      <Sidebar currentPage="setup" onPageChange={onPageChange} analysisRunning={true} />,
+    );
+
+    // The running indicator is a green dot next to Results
+    const greenDot = container.querySelector(".bg-green-500");
+    expect(greenDot).toBeTruthy();
   });
 });

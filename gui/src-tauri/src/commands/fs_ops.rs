@@ -87,29 +87,122 @@ pub async fn fs_read_image(path: String) -> Result<String, String> {
     Ok(base64::engine::general_purpose::STANDARD.encode(&bytes))
 }
 
+/// Save a file to user-chosen location via save dialog
+#[tauri::command]
+pub async fn fs_save_file(
+    app: tauri::AppHandle,
+    source_path: String,
+    default_name: String,
+) -> Result<Option<String>, String> {
+    let ext = std::path::Path::new(&default_name)
+        .extension()
+        .map(|e| e.to_string_lossy().to_string())
+        .unwrap_or_default();
+
+    let filter_name = match ext.as_str() {
+        "svg" => "SVG Image",
+        "tiff" => "TIFF Image",
+        "png" => "PNG Image",
+        "pdf" => "PDF Document",
+        "csv" => "CSV File",
+        _ => "All Files",
+    };
+
+    let dest = app
+        .dialog()
+        .file()
+        .set_file_name(&default_name)
+        .add_filter(filter_name, &[&ext])
+        .blocking_save_file();
+
+    match dest.and_then(|fp| fp.into_path().ok()) {
+        Some(dest_path) => {
+            let dest_str = dest_path.to_string_lossy().to_string();
+            fs::copy(&source_path, &dest_str).map_err(|e| {
+                format!("Failed to save file: {}", e)
+            })?;
+            Ok(Some(dest_str))
+        }
+        None => Ok(None), // User cancelled
+    }
+}
+
+/// Open a directory in the system file manager (Finder on macOS)
+#[tauri::command]
+pub async fn fs_open_directory(path: String) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg(&path)
+            .spawn()
+            .map_err(|e| format!("Failed to open directory: {}", e))?;
+    }
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("explorer")
+            .arg(&path)
+            .spawn()
+            .map_err(|e| format!("Failed to open directory: {}", e))?;
+    }
+    #[cfg(target_os = "linux")]
+    {
+        std::process::Command::new("xdg-open")
+            .arg(&path)
+            .spawn()
+            .map_err(|e| format!("Failed to open directory: {}", e))?;
+    }
+    Ok(())
+}
+
 #[tauri::command]
 pub async fn fs_list_output_plots(output_dir: String) -> Result<Vec<String>, String> {
-    let dir = std::path::Path::new(&output_dir);
-    if !dir.exists() {
+    let base = std::path::Path::new(&output_dir);
+    if !base.exists() {
         return Ok(Vec::new());
     }
 
-    let entries =
-        fs::read_dir(dir).map_err(|e| format!("Cannot read output dir: {}", e))?;
-
+    let image_extensions = ["png", "tiff", "svg", "pdf"];
     let mut plots = Vec::new();
-    for entry in entries.flatten() {
-        let path = entry.path();
-        if let Some(ext) = path.extension() {
-            let ext_str = ext.to_string_lossy().to_lowercase();
-            if ext_str == "png" || ext_str == "tiff" || ext_str == "svg" || ext_str == "pdf" {
-                if let Some(name) = path.file_name() {
-                    plots.push(name.to_string_lossy().to_string());
+
+    // Search in output_dir root and common subdirectories (figures/, plots/)
+    let search_dirs: Vec<std::path::PathBuf> = vec![
+        base.to_path_buf(),
+        base.join("figures"),
+        base.join("plots"),
+    ];
+
+    for dir in &search_dirs {
+        if !dir.exists() {
+            continue;
+        }
+        let entries = match fs::read_dir(dir) {
+            Ok(e) => e,
+            Err(_) => continue,
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if let Some(ext) = path.extension() {
+                let ext_str = ext.to_string_lossy().to_lowercase();
+                if image_extensions.contains(&ext_str.as_str()) {
+                    // Return path relative to output_dir
+                    if let Ok(rel) = path.strip_prefix(base) {
+                        plots.push(rel.to_string_lossy().to_string());
+                    }
                 }
             }
         }
     }
 
-    plots.sort();
+    // Sort: prefer SVG over TIFF (SVG renders in browser, TIFF doesn't)
+    plots.sort_by(|a, b| {
+        let a_svg = a.ends_with(".svg");
+        let b_svg = b.ends_with(".svg");
+        match (a_svg, b_svg) {
+            (true, false) => std::cmp::Ordering::Less,
+            (false, true) => std::cmp::Ordering::Greater,
+            _ => a.cmp(b),
+        }
+    });
+
     Ok(plots)
 }

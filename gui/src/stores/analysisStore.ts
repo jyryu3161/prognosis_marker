@@ -45,10 +45,15 @@ interface AnalysisState {
   enableEvidence: boolean;
   evidenceGeneFile: string;
   evidenceScoreThreshold: number;
+  selectedDiseaseId: string;
+  selectedDiseaseName: string;
+  fetchedGeneCount: number | null;
+  isFetchingGenes: boolean;
 
   // Progress
   progress: { current: number; total: number; message: string };
   logs: string[];
+  errorMessage: string;
 
   // Actions
   setAnalysisType: (type: AnalysisType) => void;
@@ -75,23 +80,28 @@ const initialState = {
   event: "",
   timeVariable: "",
   splitProp: 0.7,
-  numSeed: 100,
-  freq: 50,
+  numSeed: 10,
+  freq: 5,
   horizon: 5,
   outputDir: "",
-  enablePValueFilter: false,
-  pAdjustMethod: "fdr" as PAdjustMethod,
+  enablePValueFilter: true,
+  pAdjustMethod: "none" as PAdjustMethod,
   pThreshold: 0.05,
-  topK: null as number | null,
+  topK: 100 as number | null,
   maxCandidatesPerStep: null as number | null,
   prescreenSeeds: null as number | null,
   includeFeatures: [] as string[],
   excludeFeatures: [] as string[],
   enableEvidence: false,
   evidenceGeneFile: "",
-  evidenceScoreThreshold: 0.1,
+  evidenceScoreThreshold: 0.5,
+  selectedDiseaseId: "",
+  selectedDiseaseName: "",
+  fetchedGeneCount: null as number | null,
+  isFetchingGenes: false,
   progress: { current: 0, total: 0, message: "" },
   logs: [] as string[],
+  errorMessage: "",
 };
 
 export const useAnalysisStore = create<AnalysisState>()((set, get) => ({
@@ -125,15 +135,15 @@ export const useAnalysisStore = create<AnalysisState>()((set, get) => ({
       maxCandidatesPerStep: s.maxCandidatesPerStep,
       prescreenSeeds: s.prescreenSeeds,
       topK: s.enablePValueFilter ? s.topK : null,
-      pAdjustMethod: s.pAdjustMethod,
-      pThreshold: s.pThreshold,
+      pAdjustMethod: s.enablePValueFilter ? s.pAdjustMethod : "none",
+      pThreshold: s.enablePValueFilter ? s.pThreshold : 1.0,
       evidence: s.enableEvidence
         ? {
             geneFile: s.evidenceGeneFile,
             scoreThreshold: s.evidenceScoreThreshold,
             source: "Open Targets Platform",
-            diseaseName: "",
-            efoId: "",
+            diseaseName: s.selectedDiseaseName,
+            efoId: s.selectedDiseaseId,
           }
         : null,
     };

@@ -26,17 +26,18 @@ export function Sidebar({ currentPage, onPageChange, analysisRunning }: SidebarP
           <button
             key={item.id}
             onClick={() => onPageChange(item.id)}
-            disabled={item.id === "results" && !analysisRunning}
             className={cn(
               "w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors text-left",
               currentPage === item.id
                 ? "bg-primary text-primary-foreground"
                 : "hover:bg-accent text-foreground",
-              item.id === "results" && !analysisRunning && "opacity-50 cursor-not-allowed",
             )}
           >
             <span>{item.icon}</span>
             <span>{item.label}</span>
+            {item.id === "results" && analysisRunning && (
+              <span className="ml-auto w-2 h-2 rounded-full bg-green-500" />
+            )}
           </button>
         ))}
       </nav>

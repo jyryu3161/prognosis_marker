@@ -426,7 +426,7 @@ BinTrainAUCStepwise <- function(totvar,dat,fixvar,excvar,numSeed,SplitProp,outdi
       dir.create(outdir)
       imtres <- rbind(imtres, forward.newstep)
       colnames(forward.newstep)<-c('Variable','trainAUC','testAUC')
-      eval(parse(text = paste("write.csv(forward.newstep,'./",outdir,"/Intermediate_Forward",nrow(imtres),".csv',row.names = F)",sep = "")))
+      write.csv(forward.newstep, file.path(outdir, paste0("Intermediate_Forward", nrow(imtres), ".csv")), row.names = FALSE)
       fixvar <- gsub(" ","",strsplit(forward.var1,'\\+')[[1]][2])
       forward.old <- forward.newstep
       cat(paste("STEPWISE_LOG:Added first variable - TrainAUC:", round(forward.trauc1, 4), ", TestAUC:", round(forward.tsauc1, 4), "\n"), file = stderr())
@@ -436,7 +436,7 @@ BinTrainAUCStepwise <- function(totvar,dat,fixvar,excvar,numSeed,SplitProp,outdi
         colnames(forward.newstep) <- colnames(imtres)
         imtres <- rbind(imtres, forward.newstep)
         colnames(forward.newstep)<-c('Variable','trainAUC','testAUC')
-        eval(parse(text = paste("write.csv(forward.newstep,'./",outdir,"/Intermediate_Forward",nrow(imtres),".csv',row.names = F)",sep = "")))
+        write.csv(forward.newstep, file.path(outdir, paste0("Intermediate_Forward", nrow(imtres), ".csv")), row.names = FALSE)
         fixvar <- append(fixvar,gsub(' ','',strsplit(forward.var1,'\\+')[[1]])[length(gsub(' ','',strsplit(forward.var1,'\\+')[[1]]))])
         forward.old <- forward.newstep
         cat(paste("STEPWISE_LOG:Added variable - TrainAUC:", round(forward.trauc1, 4), ", TestAUC:", round(forward.tsauc1, 4), ", Total vars:", length(fixvar), "\n"), file = stderr())
@@ -459,7 +459,7 @@ BinTrainAUCStepwise <- function(totvar,dat,fixvar,excvar,numSeed,SplitProp,outdi
           if (backward.trauc1 > (as.numeric(forward.old[2]) + 0.005)){
             imtres <- rbind(imtres, backward.newstep)
             colnames(backward.newstep)<-c('Variable','trainAUC','testAUC')
-            eval(parse(text = paste("write.csv(backward.newstep,'./",outdir,"/Intermediate_Backward",nrow(imtres),".csv',row.names = F)",sep = "")))
+            write.csv(backward.newstep, file.path(outdir, paste0("Intermediate_Backward", nrow(imtres), ".csv")), row.names = FALSE)
             fixvar <- gsub(' ','',strsplit(backward_ls[which.max(as.numeric(backward_ls[,2])),1],'\\+')[[1]])
             forward.old <- backward.trauc1
             cat(paste("STEPWISE_LOG:Removed variable - TrainAUC:", round(backward.trauc1, 4), ", TestAUC:", round(backward.tsauc1, 4), ", Total vars:", length(fixvar), "\n"), file = stderr())
@@ -470,8 +470,8 @@ BinTrainAUCStepwise <- function(totvar,dat,fixvar,excvar,numSeed,SplitProp,outdi
         mat<-matrix(imtres[nrow(imtres),],nrow=1)
         colnames(mat)<-c('Variable','trainAUC','testAUC')
         colnames(imtres)<-c('Variable','trainAUC','testAUC')
-        eval(parse(text = paste("write.csv(imtres,'./",outdir,"/Intermediate_Stepwise_Total.csv',row.names = F)",sep = "")))
-        eval(parse(text = paste("write.csv(mat,'./",outdir,"/Final_Stepwise_Total.csv',row.names = F)",sep = "")))
+        write.csv(imtres, file.path(outdir, "Intermediate_Stepwise_Total.csv"), row.names = FALSE)
+        write.csv(mat, file.path(outdir, "Final_Stepwise_Total.csv"), row.names = FALSE)
         break
       }
     }
@@ -479,8 +479,8 @@ BinTrainAUCStepwise <- function(totvar,dat,fixvar,excvar,numSeed,SplitProp,outdi
   mat<-matrix(imtres[nrow(imtres),],nrow=1)
   colnames(mat)<-c('Variable','trainAUC','testAUC')
   colnames(imtres)<-c('Variable','trainAUC','testAUC')
-  eval(parse(text = paste("write.csv(imtres,'./",outdir,"/Intermediate_Stepwise_Total.csv',row.names = F)",sep = "")))
-  eval(parse(text = paste("write.csv(mat,'./",outdir,"/Final_Stepwise_Total.csv',row.names = F)",sep = "")))
+  write.csv(imtres, file.path(outdir, "Intermediate_Stepwise_Total.csv"), row.names = FALSE)
+  write.csv(mat, file.path(outdir, "Final_Stepwise_Total.csv"), row.names = FALSE)
   final_vars <- strsplit(as.character(mat[1,1]), " \\+ ")[[1]]
   final_train_auc <- as.numeric(mat[1,2])
   final_test_auc <- as.numeric(mat[1,3])

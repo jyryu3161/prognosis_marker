@@ -10,6 +10,37 @@ import {
 } from "@/lib/tauri/commands";
 import { cn } from "@/lib/utils";
 
+function RunningProgress() {
+  const progress = useAnalysisStore((s) => s.progress);
+  const hasProgress = progress.total > 0;
+  const pct = hasProgress ? Math.round((progress.current / progress.total) * 100) : 0;
+
+  return (
+    <div className="flex items-center gap-3 flex-1 min-w-0">
+      <span className="text-sm text-muted-foreground animate-pulse shrink-0">
+        Running...
+      </span>
+      {hasProgress ? (
+        <>
+          <div className="flex-1 max-w-48 h-2 bg-muted rounded-full overflow-hidden">
+            <div
+              className="h-full bg-primary rounded-full transition-all duration-500 ease-out"
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+          <span className="text-xs text-muted-foreground font-mono shrink-0">
+            {progress.current}/{progress.total} ({pct}%)
+          </span>
+        </>
+      ) : (
+        <div className="flex-1 max-w-48 h-2 bg-muted rounded-full overflow-hidden">
+          <div className="h-full w-1/3 bg-primary/60 rounded-full animate-[indeterminate_1.5s_ease-in-out_infinite]" />
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function RunActionBar() {
   const status = useAnalysisStore((s) => s.status);
   const dataFile = useAnalysisStore((s) => s.dataFile);
@@ -33,10 +64,17 @@ export function RunActionBar() {
 
   const handleRun = async () => {
     try {
+      // Clear previous results before starting new analysis
+      setParam("errorMessage", "");
+      setParam("logs", [] as string[]);
+      setParam("progress", { current: 0, total: 0, message: "" });
+      useAnalysisStore.getState().setResult(null);
       setStatus("running");
       const config = buildConfig();
       await runAnalysis(config);
     } catch (e) {
+      const msg = typeof e === "string" ? e : String(e);
+      setParam("errorMessage", msg);
       setStatus("failed");
       console.error("Analysis error:", e);
     }
@@ -149,13 +187,20 @@ export function RunActionBar() {
       )}
 
       {status === "running" && (
-        <span className="text-sm text-muted-foreground animate-pulse">Running...</span>
+        <RunningProgress />
       )}
       {status === "completed" && (
         <span className="text-sm text-green-600">Completed</span>
       )}
       {status === "failed" && (
-        <span className="text-sm text-destructive">Failed</span>
+        <div className="flex flex-col gap-1">
+          <span className="text-sm text-destructive">Failed</span>
+          {useAnalysisStore.getState().errorMessage && (
+            <span className="text-xs text-destructive/80 max-w-md truncate">
+              {useAnalysisStore.getState().errorMessage}
+            </span>
+          )}
+        </div>
       )}
       {status === "cancelled" && (
         <span className="text-sm text-yellow-600">Cancelled</span>

@@ -78,3 +78,31 @@ export interface RuntimeInfo {
   pixiPath: string | null;
   rVersion: string | null;
 }
+
+/** Open Targets disease entry */
+export interface OTDisease {
+  efo_id: string;
+  name: string;
+  description: string;
+}
+
+/** Result from fetching Open Targets genes */
+export interface FetchGenesResult {
+  file_path: string;
+  gene_count: number;
+}
+
+/** Filtered gene count result */
+export interface FilteredCount {
+  total: number;
+  passed: number;
+}
+
+/** Cached evidence file entry */
+export interface CachedEvidence {
+  efo_id: string;
+  disease_name: string;
+  gene_count: number;
+  fetched_at: string;
+  file_path: string;
+}

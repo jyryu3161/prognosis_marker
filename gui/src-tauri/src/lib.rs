@@ -1,6 +1,5 @@
 mod commands;
 mod models;
-mod utils;
 
 use commands::analysis::AnalysisProcess;
 use std::sync::Mutex;
@@ -31,6 +30,8 @@ pub fn run() {
             commands::fs_ops::fs_read_csv_header,
             commands::fs_ops::fs_read_image,
             commands::fs_ops::fs_list_output_plots,
+            commands::fs_ops::fs_save_file,
+            commands::fs_ops::fs_open_directory,
             // Config
             commands::config::config_load_yaml,
             commands::config::config_save_yaml,
@@ -40,6 +41,11 @@ pub fn run() {
             // Analysis
             commands::analysis::analysis_run,
             commands::analysis::analysis_cancel,
+            // Open Targets
+            commands::opentargets::opentargets_search_diseases,
+            commands::opentargets::opentargets_fetch_genes,
+            commands::opentargets::opentargets_list_cached,
+            commands::opentargets::opentargets_count_filtered,
             // Runtime
             commands::runtime::runtime_check_deps,
         ])

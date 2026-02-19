@@ -1,6 +1,12 @@
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useAnalysisStore } from "@/stores/analysisStore";
-import { pickFile } from "@/lib/tauri/commands";
-import type { PAdjustMethod } from "@/types/analysis";
+import {
+  searchDiseases,
+  fetchOpenTargetsGenes,
+  listCachedEvidence,
+  countFilteredGenes,
+} from "@/lib/tauri/commands";
+import type { PAdjustMethod, OTDisease, CachedEvidence } from "@/types/analysis";
 
 function Checkbox({
   label,
@@ -24,6 +30,97 @@ function Checkbox({
   );
 }
 
+function DiseaseSearch({
+  onSelect,
+}: {
+  onSelect: (disease: OTDisease) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<OTDisease[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const doSearch = useCallback(async (q: string) => {
+    if (q.trim().length < 2) {
+      setResults([]);
+      setIsOpen(false);
+      return;
+    }
+    setIsSearching(true);
+    try {
+      const diseases = await searchDiseases(q);
+      setResults(diseases);
+      setIsOpen(diseases.length > 0);
+    } catch {
+      setResults([]);
+      setIsOpen(false);
+    } finally {
+      setIsSearching(false);
+    }
+  }, []);
+
+  const handleInputChange = (value: string) => {
+    setQuery(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => doSearch(value), 300);
+  };
+
+  const handleSelect = (disease: OTDisease) => {
+    setQuery(disease.name);
+    setIsOpen(false);
+    onSelect(disease);
+  };
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  return (
+    <div ref={containerRef} className="relative">
+      <div className="flex items-center gap-2">
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => handleInputChange(e.target.value)}
+          onFocus={() => results.length > 0 && setIsOpen(true)}
+          placeholder="Search diseases (e.g. breast cancer, glioma, leukemia)..."
+          className="flex-1 h-9 px-3 rounded-md border border-border bg-background text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+        />
+        {isSearching && (
+          <span className="text-xs text-muted-foreground animate-pulse">Searching...</span>
+        )}
+      </div>
+
+      {isOpen && (
+        <ul className="absolute z-50 mt-1 w-full max-h-60 overflow-y-auto rounded-md border border-border bg-background shadow-lg">
+          {results.map((d) => (
+            <li key={d.efo_id}>
+              <button
+                onClick={() => handleSelect(d)}
+                className="w-full text-left px-3 py-2 hover:bg-accent transition-colors"
+              >
+                <div className="text-sm font-medium">{d.name}</div>
+                <div className="text-xs text-muted-foreground truncate">
+                  {d.efo_id}
+                  {d.description && ` — ${d.description}`}
+                </div>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export function AdvancedOptionsSection() {
   const enablePValueFilter = useAnalysisStore((s) => s.enablePValueFilter);
   const pAdjustMethod = useAnalysisStore((s) => s.pAdjustMethod);
@@ -32,15 +129,85 @@ export function AdvancedOptionsSection() {
   const enableEvidence = useAnalysisStore((s) => s.enableEvidence);
   const evidenceGeneFile = useAnalysisStore((s) => s.evidenceGeneFile);
   const evidenceScoreThreshold = useAnalysisStore((s) => s.evidenceScoreThreshold);
+  const selectedDiseaseId = useAnalysisStore((s) => s.selectedDiseaseId);
+  const selectedDiseaseName = useAnalysisStore((s) => s.selectedDiseaseName);
+  const fetchedGeneCount = useAnalysisStore((s) => s.fetchedGeneCount);
+  const isFetchingGenes = useAnalysisStore((s) => s.isFetchingGenes);
   const setParam = useAnalysisStore((s) => s.setParam);
 
-  const handlePickEvidenceFile = async () => {
-    try {
-      const path = await pickFile();
-      if (path) setParam("evidenceGeneFile", path);
-    } catch (e) {
-      console.error("File pick error:", e);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [cachedFiles, setCachedFiles] = useState<CachedEvidence[]>([]);
+  const [filteredCount, setFilteredCount] = useState<{ total: number; passed: number } | null>(null);
+  const thresholdDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Load cached files when evidence is enabled
+  useEffect(() => {
+    if (enableEvidence) {
+      listCachedEvidence()
+        .then(setCachedFiles)
+        .catch(() => setCachedFiles([]));
     }
+  }, [enableEvidence]);
+
+  // Recount filtered genes when threshold or file changes
+  useEffect(() => {
+    if (!evidenceGeneFile) {
+      setFilteredCount(null);
+      return;
+    }
+    if (thresholdDebounceRef.current) clearTimeout(thresholdDebounceRef.current);
+    thresholdDebounceRef.current = setTimeout(() => {
+      countFilteredGenes(evidenceGeneFile, evidenceScoreThreshold)
+        .then(setFilteredCount)
+        .catch(() => setFilteredCount(null));
+    }, 200);
+  }, [evidenceGeneFile, evidenceScoreThreshold]);
+
+  const refreshCache = () => {
+    listCachedEvidence()
+      .then(setCachedFiles)
+      .catch(() => setCachedFiles([]));
+  };
+
+  const handleDiseaseSelect = (disease: OTDisease) => {
+    setParam("selectedDiseaseId", disease.efo_id);
+    setParam("selectedDiseaseName", disease.name);
+    setParam("fetchedGeneCount", null);
+    setFetchError(null);
+
+    // Auto-select if already cached
+    const cached = cachedFiles.find((c) => c.efo_id === disease.efo_id);
+    if (cached) {
+      setParam("evidenceGeneFile", cached.file_path);
+      setParam("fetchedGeneCount", cached.gene_count);
+    } else {
+      setParam("evidenceGeneFile", "");
+    }
+  };
+
+  const handleFetchGenes = async () => {
+    if (!selectedDiseaseId) return;
+    setParam("isFetchingGenes", true);
+    setFetchError(null);
+    try {
+      const result = await fetchOpenTargetsGenes(selectedDiseaseId, selectedDiseaseName);
+      setParam("evidenceGeneFile", result.file_path);
+      setParam("fetchedGeneCount", result.gene_count);
+      refreshCache();
+    } catch (e) {
+      setFetchError(String(e));
+      setParam("fetchedGeneCount", null);
+    } finally {
+      setParam("isFetchingGenes", false);
+    }
+  };
+
+  const handleSelectCached = (cached: CachedEvidence) => {
+    setParam("selectedDiseaseId", cached.efo_id);
+    setParam("selectedDiseaseName", cached.disease_name);
+    setParam("evidenceGeneFile", cached.file_path);
+    setParam("fetchedGeneCount", cached.gene_count);
+    setFetchError(null);
   };
 
   return (
@@ -121,28 +288,76 @@ export function AdvancedOptionsSection() {
           />
 
           {enableEvidence && (
-            <div className="ml-6 space-y-3">
+            <div className="ml-6 space-y-4">
+              {/* Cached files */}
+              {cachedFiles.length > 0 && (
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Previously Fetched
+                  </label>
+                  <div className="border border-border rounded-md divide-y divide-border max-h-40 overflow-y-auto">
+                    {cachedFiles.map((c) => {
+                      const isSelected = evidenceGeneFile === c.file_path;
+                      return (
+                        <button
+                          key={c.efo_id}
+                          onClick={() => handleSelectCached(c)}
+                          className={`w-full text-left px-3 py-2 text-sm transition-colors ${
+                            isSelected
+                              ? "bg-primary/10 text-primary"
+                              : "hover:bg-accent"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium">{c.disease_name}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {c.gene_count.toLocaleString()} genes
+                            </span>
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {c.efo_id} &middot; {c.fetched_at}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Search new disease */}
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-medium text-muted-foreground">
-                  Evidence Gene File
+                  {cachedFiles.length > 0 ? "Or Search New Disease" : "Search Disease (Open Targets Platform)"}
                 </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={evidenceGeneFile}
-                    onChange={(e) => setParam("evidenceGeneFile", e.target.value)}
-                    placeholder="Select evidence gene file..."
-                    className="flex-1 h-9 px-3 rounded-md border border-border bg-background text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-                  />
-                  <button
-                    onClick={handlePickEvidenceFile}
-                    className="px-3 py-2 bg-secondary text-secondary-foreground rounded-md text-sm hover:bg-secondary/80 transition-colors whitespace-nowrap"
-                  >
-                    Browse
-                  </button>
-                </div>
+                <DiseaseSearch onSelect={handleDiseaseSelect} />
               </div>
 
+              {selectedDiseaseId && (
+                <div className="space-y-3">
+                  <p className="text-xs text-muted-foreground">
+                    Selected: <span className="font-medium text-foreground">{selectedDiseaseName}</span>{" "}
+                    <span className="text-muted-foreground">({selectedDiseaseId})</span>
+                  </p>
+
+                  <button
+                    onClick={handleFetchGenes}
+                    disabled={isFetchingGenes}
+                    className="h-9 px-4 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isFetchingGenes
+                      ? "Fetching all genes..."
+                      : cachedFiles.some((c) => c.efo_id === selectedDiseaseId)
+                        ? "Re-fetch Genes"
+                        : "Fetch Genes"}
+                  </button>
+
+                  {fetchError && (
+                    <p className="text-xs text-destructive">{fetchError}</p>
+                  )}
+                </div>
+              )}
+
+              {/* Score threshold */}
               <div className="flex flex-col gap-1 max-w-xs">
                 <label className="text-xs font-medium text-muted-foreground">
                   Score Threshold
@@ -159,6 +374,14 @@ export function AdvancedOptionsSection() {
                   className="h-9 px-3 rounded-md border border-border bg-background text-sm font-mono focus:outline-none focus:ring-1 focus:ring-primary"
                 />
               </div>
+
+              {/* Filtered count display */}
+              {filteredCount && (
+                <p className="text-xs text-green-600">
+                  {filteredCount.passed.toLocaleString()} / {filteredCount.total.toLocaleString()} genes
+                  pass threshold &ge; {evidenceScoreThreshold}
+                </p>
+              )}
             </div>
           )}
         </div>
