@@ -16,16 +16,14 @@ function App() {
   const envStatus = useConfigStore((s) => s.envStatus);
   const setEnvStatus = useConfigStore((s) => s.setEnvStatus);
   const setEnvChecking = useConfigStore((s) => s.setEnvChecking);
-  const backend = useConfigStore((s) => s.backend);
   const setupStatus = useConfigStore((s) => s.setupStatus);
 
   const hasResults =
     status === "completed" || status === "running" || status === "failed";
 
-  // Determine if environment is ready
+  // Determine if environment is ready (Docker-only)
   const envReady = envStatus
-    ? (envStatus.rAvailable && envStatus.packagesOk) ||
-      (backend === "docker" && envStatus.dockerImagePresent)
+    ? envStatus.dockerAvailable && envStatus.dockerImagePresent
     : false;
 
   // Show main UI after setup completes (with brief delay for UX)

@@ -1,28 +1,20 @@
 import { useEffect, useRef } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { useConfigStore } from "@/stores/configStore";
-import {
-  checkEnv,
-  installEnv,
-  cancelSetup,
-  pullDockerImage,
-} from "@/lib/tauri/commands";
+import { checkEnv, pullDockerImage, cancelSetup } from "@/lib/tauri/commands";
 
 export function EnvironmentSetup() {
   const envStatus = useConfigStore((s) => s.envStatus);
   const envChecking = useConfigStore((s) => s.envChecking);
   const setupStatus = useConfigStore((s) => s.setupStatus);
   const setupLogs = useConfigStore((s) => s.setupLogs);
-  const setupStep = useConfigStore((s) => s.setupStep);
   const setupError = useConfigStore((s) => s.setupError);
   const setEnvStatus = useConfigStore((s) => s.setEnvStatus);
   const setEnvChecking = useConfigStore((s) => s.setEnvChecking);
   const setSetupStatus = useConfigStore((s) => s.setSetupStatus);
   const appendSetupLog = useConfigStore((s) => s.appendSetupLog);
   const clearSetupLogs = useConfigStore((s) => s.clearSetupLogs);
-  const setSetupStep = useConfigStore((s) => s.setSetupStep);
   const setSetupError = useConfigStore((s) => s.setSetupError);
-  const setBackend = useConfigStore((s) => s.setBackend);
 
   const logEndRef = useRef<HTMLDivElement>(null);
 
@@ -39,18 +31,9 @@ export function EnvironmentSetup() {
       appendSetupLog(event.payload);
     }).then((u) => unlisten.push(u));
 
-    listen<{ step: number; total: number; message: string }>(
-      "setup://progress",
-      (event) => {
-        const { step, total, message } = event.payload;
-        setSetupStep(step, total, message);
-      }
-    ).then((u) => unlisten.push(u));
-
     listen<{ success: boolean }>("setup://complete", (event) => {
       if (event.payload.success) {
         setSetupStatus("completed");
-        // Re-check env after successful install
         handleCheckEnv();
       } else {
         setSetupStatus("failed");
@@ -81,12 +64,12 @@ export function EnvironmentSetup() {
     }
   };
 
-  const handleInstall = async () => {
+  const handlePullImage = async () => {
     clearSetupLogs();
     setSetupStatus("installing");
     setSetupError("");
     try {
-      await installEnv();
+      await pullDockerImage();
     } catch (e: unknown) {
       setSetupStatus("failed");
       const msg = typeof e === "string" ? e : (e as Error)?.message ?? "Unknown error";
@@ -99,34 +82,14 @@ export function EnvironmentSetup() {
     try {
       await cancelSetup();
       setSetupStatus("cancelled");
-      appendSetupLog("Installation cancelled by user.");
+      appendSetupLog("Cancelled by user.");
     } catch (e) {
       console.error("Cancel failed:", e);
     }
   };
 
-  const handleUseDocker = async () => {
-    setBackend("docker");
-    if (envStatus && !envStatus.dockerImagePresent) {
-      // Start pulling the image
-      clearSetupLogs();
-      setSetupStatus("installing");
-      setSetupError("");
-      try {
-        await pullDockerImage();
-      } catch (e: unknown) {
-        setSetupStatus("failed");
-        const msg = typeof e === "string" ? e : (e as Error)?.message ?? "Unknown error";
-        setSetupError(msg);
-      }
-    }
-  };
-
-  const isInstalling = setupStatus === "installing";
-  const progressPct =
-    setupStep.total > 0
-      ? Math.round((setupStep.step / setupStep.total) * 100)
-      : 0;
+  const isPulling = setupStatus === "installing";
+  const dockerOk = envStatus?.dockerAvailable && envStatus?.dockerImagePresent;
 
   return (
     <div className="flex-1 flex items-center justify-center p-8 bg-background">
@@ -139,10 +102,10 @@ export function EnvironmentSetup() {
           </p>
         </div>
 
-        {/* Environment Status */}
+        {/* Docker Status */}
         <section className="border border-border rounded-lg p-4 space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-medium">Environment Status</h2>
+            <h2 className="text-sm font-medium">Docker Status</h2>
             <button
               onClick={handleCheckEnv}
               disabled={envChecking}
@@ -153,124 +116,98 @@ export function EnvironmentSetup() {
           </div>
 
           {envChecking && !envStatus && (
-            <p className="text-xs text-muted-foreground">
-              Checking environment...
-            </p>
+            <p className="text-xs text-muted-foreground">Checking Docker...</p>
           )}
 
           {envStatus && (
-            <div className="grid grid-cols-3 gap-3 text-xs">
-              <StatusItem
-                label="pixi"
-                ok={envStatus.pixiInstalled}
-              />
-              <StatusItem
-                label="R"
-                ok={envStatus.rAvailable}
-              />
-              <StatusItem
-                label="Packages"
-                ok={envStatus.packagesOk}
-              />
+            <div className="space-y-2 text-xs">
+              <div className="flex items-center gap-2">
+                <span className={envStatus.dockerAvailable ? "text-green-600" : "text-destructive"}>
+                  {envStatus.dockerAvailable ? "\u2713" : "\u2717"}
+                </span>
+                <span>Docker Desktop</span>
+                {!envStatus.dockerAvailable && (
+                  <span className="text-muted-foreground">- Not running</span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={envStatus.dockerImagePresent ? "text-green-600" : "text-muted-foreground"}>
+                  {envStatus.dockerImagePresent ? "\u2713" : "\u2717"}
+                </span>
+                <span>Analysis Image</span>
+                {envStatus.dockerAvailable && !envStatus.dockerImagePresent && (
+                  <span className="text-muted-foreground">- Not downloaded</span>
+                )}
+              </div>
             </div>
           )}
         </section>
 
-        {/* Install / Docker options */}
-        <section className="space-y-3">
-          {/* Local install button */}
-          {!isInstalling && setupStatus !== "completed" && (
-            <button
-              onClick={handleInstall}
-              disabled={isInstalling}
-              className="w-full py-2.5 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
-            >
-              Install Analysis Environment
-            </button>
-          )}
-          {!isInstalling && setupStatus !== "completed" && (
-            <p className="text-xs text-center text-muted-foreground">
-              Installs pixi, R, and required packages (~10-15 minutes)
+        {/* Docker not installed */}
+        {envStatus && !envStatus.dockerAvailable && (
+          <section className="border border-amber-500/30 bg-amber-500/5 rounded-lg p-4 space-y-3">
+            <h3 className="text-sm font-medium">Docker Desktop Required</h3>
+            <p className="text-xs text-muted-foreground">
+              PROMISE uses Docker to run analyses. Please install Docker Desktop and make sure it is running.
             </p>
-          )}
-
-          {/* Cancel button during install */}
-          {isInstalling && (
-            <button
-              onClick={handleCancel}
-              className="w-full py-2.5 text-sm font-medium bg-destructive text-destructive-foreground rounded-lg hover:bg-destructive/90 transition-colors"
+            <a
+              href="https://www.docker.com/products/docker-desktop/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block px-4 py-2 text-xs font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
             >
-              Cancel Installation
+              Download Docker Desktop
+            </a>
+            <p className="text-[11px] text-muted-foreground">
+              After installing, launch Docker Desktop and click "Refresh" above.
+            </p>
+          </section>
+        )}
+
+        {/* Docker available but image not pulled */}
+        {envStatus?.dockerAvailable && !envStatus.dockerImagePresent && !isPulling && setupStatus !== "completed" && (
+          <section className="space-y-3">
+            <button
+              onClick={handlePullImage}
+              className="w-full py-2.5 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+            >
+              Download Analysis Image
             </button>
-          )}
+            <p className="text-xs text-center text-muted-foreground">
+              Downloads the PROMISE analysis engine (~2-3 GB, one-time)
+            </p>
+          </section>
+        )}
 
-          {/* Docker option */}
-          {envStatus?.dockerAvailable && (
-            <>
-              <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                <div className="flex-1 border-t border-border" />
-                <span>or</span>
-                <div className="flex-1 border-t border-border" />
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="text-xs space-y-0.5">
-                  <span className="text-green-600">Docker detected</span>
-                  {envStatus.dockerImagePresent && (
-                    <span className="ml-2 text-muted-foreground">
-                      (image ready)
-                    </span>
-                  )}
-                </div>
-                <button
-                  onClick={handleUseDocker}
-                  disabled={isInstalling}
-                  className="px-4 py-1.5 text-xs bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80 transition-colors disabled:opacity-50"
-                >
-                  Use Docker Instead
-                </button>
-              </div>
-            </>
-          )}
-        </section>
+        {/* Cancel button during pull */}
+        {isPulling && (
+          <button
+            onClick={handleCancel}
+            className="w-full py-2.5 text-sm font-medium bg-destructive text-destructive-foreground rounded-lg hover:bg-destructive/90 transition-colors"
+          >
+            Cancel Download
+          </button>
+        )}
 
-        {/* Setup completed message */}
-        {setupStatus === "completed" && (
+        {/* Completed */}
+        {(setupStatus === "completed" || dockerOk) && setupStatus !== "idle" && (
           <div className="border border-green-500/30 bg-green-500/5 rounded-lg p-3 text-center">
             <p className="text-sm text-green-600 font-medium">
-              Environment ready! Starting PROMISE...
+              Ready! Starting PROMISE...
             </p>
           </div>
         )}
 
-        {/* Error message */}
+        {/* Error */}
         {setupError && (
           <div className="border border-destructive/30 bg-destructive/5 rounded-lg p-3">
             <p className="text-xs text-destructive">{setupError}</p>
           </div>
         )}
 
-        {/* Install log */}
+        {/* Pull log */}
         {setupLogs.length > 0 && (
           <section className="border border-border rounded-lg overflow-hidden">
-            {/* Progress bar */}
-            {isInstalling && setupStep.total > 0 && (
-              <div className="px-3 py-2 border-b border-border bg-muted/30 space-y-1.5">
-                <div className="flex justify-between text-xs">
-                  <span>{setupStep.message}</span>
-                  <span className="text-muted-foreground">
-                    Step {setupStep.step}/{setupStep.total} ({progressPct}%)
-                  </span>
-                </div>
-                <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-primary rounded-full transition-all duration-300"
-                    style={{ width: `${progressPct}%` }}
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Log output */}
             <div className="max-h-48 overflow-y-auto p-3 bg-muted/10">
               {setupLogs.map((line, i) => (
                 <p key={i} className="text-[11px] font-mono text-muted-foreground leading-relaxed">
@@ -282,17 +219,6 @@ export function EnvironmentSetup() {
           </section>
         )}
       </div>
-    </div>
-  );
-}
-
-function StatusItem({ label, ok }: { label: string; ok: boolean }) {
-  return (
-    <div className="flex items-center gap-1.5 text-xs">
-      <span className={ok ? "text-green-600" : "text-muted-foreground"}>
-        {ok ? "\u2713" : "\u2717"}
-      </span>
-      <span>{label}</span>
     </div>
   );
 }

@@ -43,7 +43,7 @@ export const useConfigStore = create<ConfigState>()((set) => ({
 
   envStatus: null,
   envChecking: false,
-  backend: "local",
+  backend: "docker",
   setupStatus: "idle",
   setupLogs: [],
   setupStep: { step: 0, total: 0, message: "" },
