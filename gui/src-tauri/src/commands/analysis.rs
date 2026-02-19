@@ -1,3 +1,4 @@
+use super::hide_console;
 use crate::models::error::AppError;
 use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
@@ -103,15 +104,15 @@ fn transform_config_for_r(config: &serde_json::Value) -> serde_json::Value {
     if let Some(v) = config.get("pThreshold") {
         section.insert("p_threshold".into(), v.clone());
     }
-    if let Some(v) = config.get("timeVariable") {
-        if !v.is_null() {
-            section.insert("time_variable".into(), v.clone());
-        }
-    }
-
     // Type-specific keys
     match analysis_type {
         "survival" => {
+            // timeVariable only for survival mode
+            if let Some(v) = config.get("timeVariable") {
+                if !v.is_null() {
+                    section.insert("time_variable".into(), v.clone());
+                }
+            }
             if let Some(v) = config.get("event") {
                 section.insert("event".into(), v.clone());
             }
@@ -217,7 +218,7 @@ pub async fn analysis_run(
         )
     } else {
         // Try pixi run (if pixi is installed but env path differs)
-        let pixi_available = std::process::Command::new("pixi")
+        let pixi_available = hide_console(std::process::Command::new("pixi"))
             .arg("--version")
             .current_dir(&project_root)
             .output()
@@ -247,7 +248,7 @@ pub async fn analysis_run(
     };
 
     // Set R library path explicitly to ensure pixi-installed packages are found
-    let mut cmd = std::process::Command::new(&cmd_program);
+    let mut cmd = hide_console(std::process::Command::new(&cmd_program));
     cmd.args(&cmd_args)
         .current_dir(&project_root)
         .stdout(std::process::Stdio::piped())
@@ -392,7 +393,7 @@ pub async fn analysis_cancel(state: State<'_, AnalysisProcess>) -> Result<(), St
         }
         #[cfg(windows)]
         {
-            let _ = std::process::Command::new("taskkill")
+            let _ = hide_console(std::process::Command::new("taskkill"))
                 .args(["/PID", &pid.to_string(), "/F"])
                 .output();
         }
@@ -513,7 +514,7 @@ async fn run_via_docker(
 
     let _ = app.emit("analysis://log", format!("[PROMISE] Docker mode: docker {}", docker_args.join(" ")));
 
-    let mut child = std::process::Command::new("docker")
+    let mut child = hide_console(std::process::Command::new("docker"))
         .args(&docker_args)
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
@@ -878,5 +879,31 @@ mod tests {
         assert_eq!(evidence["score_threshold"], 0.1);
         assert_eq!(evidence["disease_name"], "breast carcinoma");
         assert_eq!(evidence["efo_id"], "EFO_0000305");
+    }
+
+    #[test]
+    fn test_transform_binary_excludes_time_variable() {
+        let gui_config = serde_json::json!({
+            "type": "binary",
+            "dataFile": "/data/test.csv",
+            "sampleId": "sample",
+            "outcome": "OS",
+            "timeVariable": "OS.year",
+            "splitProp": 0.7,
+            "numSeed": 100,
+            "outputDir": "results/binary",
+            "freq": 50,
+            "exclude": [],
+            "include": [],
+            "pAdjustMethod": "fdr",
+            "pThreshold": 0.05,
+            "evidence": null
+        });
+
+        let r_config = transform_config_for_r(&gui_config);
+
+        let binary = &r_config["binary"];
+        // time_variable must NOT be present in binary mode
+        assert!(binary.get("time_variable").is_none());
     }
 }

@@ -141,9 +141,20 @@ fn find_project_root() -> Option<PathBuf> {
 }
 
 fn cache_dir() -> Result<PathBuf, String> {
-    let root = find_project_root()
-        .ok_or_else(|| "Cannot find project root".to_string())?;
-    let dir = root.join(CACHE_DIR);
+    // Try project root first (development mode)
+    if let Some(root) = find_project_root() {
+        let dir = root.join(CACHE_DIR);
+        if !dir.exists() {
+            std::fs::create_dir_all(&dir)
+                .map_err(|e| format!("Cannot create cache directory: {}", e))?;
+        }
+        return Ok(dir);
+    }
+    // Fallback: user data directory (installed app on Windows/macOS/Linux)
+    let home = std::env::var("HOME")
+        .or_else(|_| std::env::var("USERPROFILE"))
+        .map_err(|_| "Cannot determine home directory".to_string())?;
+    let dir = PathBuf::from(home).join(".promise").join(CACHE_DIR);
     if !dir.exists() {
         std::fs::create_dir_all(&dir)
             .map_err(|e| format!("Cannot create cache directory: {}", e))?;

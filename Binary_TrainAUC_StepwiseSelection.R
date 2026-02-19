@@ -57,52 +57,58 @@ save_plot <- function(plot_obj, filename_base, width_inch = 7, height_inch = 5, 
   if (is_ggplot) {
     # Save as TIFF 300 DPI
     tryCatch({
-      tiff(filename = paste0(filename_base, ".tiff"), 
-           width = width_inch * 300, height = height_inch * 300, 
+      tiff(filename = paste0(filename_base, ".tiff"),
+           width = width_inch * 300, height = height_inch * 300,
            units = "px", res = 300, compression = "lzw")
       print(plot_obj)
       dev.off()
     }, error = function(e) {
+      try(dev.off(), silent = TRUE)
       cat(paste("STEPWISE_LOG:Warning - Failed to save TIFF:", e$message, "\n"), file = stderr())
     })
-    
+
     # Save as SVG (try svglite first, fallback to base svg)
     tryCatch({
       if (requireNamespace("svglite", quietly = TRUE)) {
-        svglite::svglite(file = paste0(filename_base, ".svg"), 
+        svglite::svglite(file = paste0(filename_base, ".svg"),
                         width = width_inch, height = height_inch)
-        print(plot_obj)
-        dev.off()
       } else {
-        # Fallback to base svg
-        svg(filename = paste0(filename_base, ".svg"), 
+        svg(filename = paste0(filename_base, ".svg"),
             width = width_inch, height = height_inch)
-        print(plot_obj)
-        dev.off()
       }
+      print(plot_obj)
+      dev.off()
     }, error = function(e) {
+      try(dev.off(), silent = TRUE)
       cat(paste("STEPWISE_LOG:Warning - Failed to save SVG:", e$message, "\n"), file = stderr())
     })
   } else {
     # For base R plots
     # Save as TIFF 300 DPI
     tryCatch({
-      tiff(filename = paste0(filename_base, ".tiff"), 
-           width = width_inch * 300, height = height_inch * 300, 
+      tiff(filename = paste0(filename_base, ".tiff"),
+           width = width_inch * 300, height = height_inch * 300,
            units = "px", res = 300, compression = "lzw")
       print(plot_obj)
       dev.off()
     }, error = function(e) {
+      try(dev.off(), silent = TRUE)
       cat(paste("STEPWISE_LOG:Warning - Failed to save TIFF:", e$message, "\n"), file = stderr())
     })
-    
-    # Save as SVG
+
+    # Save as SVG (try svglite first, fallback to base svg)
     tryCatch({
-      svg(filename = paste0(filename_base, ".svg"), 
-          width = width_inch, height = height_inch)
+      if (requireNamespace("svglite", quietly = TRUE)) {
+        svglite::svglite(file = paste0(filename_base, ".svg"),
+                        width = width_inch, height = height_inch)
+      } else {
+        svg(filename = paste0(filename_base, ".svg"),
+            width = width_inch, height = height_inch)
+      }
       print(plot_obj)
       dev.off()
     }, error = function(e) {
+      try(dev.off(), silent = TRUE)
       cat(paste("STEPWISE_LOG:Warning - Failed to save SVG:", e$message, "\n"), file = stderr())
     })
   }
@@ -650,21 +656,21 @@ PlotBinROC <- function(dat,numSeed,SplitProp,Result){
     plot_roc_func()
     dev.off()
   }, error = function(e) {
+    try(dev.off(), silent = TRUE)
     cat(paste("STEPWISE_LOG:Warning - Failed to save ROC TIFF:", e$message, "\n"), file = stderr())
   })
-  
+
   # Save as SVG
   tryCatch({
     if (requireNamespace("svglite", quietly = TRUE)) {
       svglite::svglite(file = 'figures/Binary_ROCcurve.svg', width = 7, height = 3.5)
-      plot_roc_func()
-      dev.off()
     } else {
       svg(filename = 'figures/Binary_ROCcurve.svg', width = 7, height = 3.5)
-      plot_roc_func()
-      dev.off()
     }
+    plot_roc_func()
+    dev.off()
   }, error = function(e) {
+    try(dev.off(), silent = TRUE)
     cat(paste("STEPWISE_LOG:Warning - Failed to save ROC SVG:", e$message, "\n"), file = stderr())
   })
 }
@@ -936,15 +942,21 @@ PlotBinConfusionMatrix <- function(dat, numSeed, SplitProp, Result) {
     plot_cm_func()
     dev.off()
   }, error = function(e) {
+    try(dev.off(), silent = TRUE)
     cat(paste("STEPWISE_LOG:Warning - Failed to save Confusion Matrix TIFF:", e$message, "\n"), file = stderr())
   })
-  
+
   # Save as SVG
   tryCatch({
-    svg(filename = 'figures/Binary_Confusion_Matrix.svg', width = 5, height = 5)
+    if (requireNamespace("svglite", quietly = TRUE)) {
+      svglite::svglite(file = 'figures/Binary_Confusion_Matrix.svg', width = 5, height = 5)
+    } else {
+      svg(filename = 'figures/Binary_Confusion_Matrix.svg', width = 5, height = 5)
+    }
     plot_cm_func()
     dev.off()
   }, error = function(e) {
+    try(dev.off(), silent = TRUE)
     cat(paste("STEPWISE_LOG:Warning - Failed to save Confusion Matrix SVG:", e$message, "\n"), file = stderr())
   })
 }

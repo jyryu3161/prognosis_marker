@@ -19,6 +19,11 @@ function LogPanel() {
     logEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [logs.length]);
 
+  // Scroll to bottom on mount (when navigating back to this page)
+  useEffect(() => {
+    logEndRef.current?.scrollIntoView({ behavior: "instant" });
+  }, []);
+
   return (
     <div className="border border-border rounded-lg p-4">
       <div className="flex items-center justify-between mb-2">

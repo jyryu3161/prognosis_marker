@@ -1,3 +1,4 @@
+use super::hide_console;
 use crate::commands::analysis::find_project_root;
 use crate::commands::runtime::find_executable;
 use crate::models::config::EnvStatus;
@@ -89,7 +90,7 @@ pub async fn setup_install_env(
             ("bash", vec!["-c", "curl -fsSL https://pixi.sh/install.sh | bash"])
         };
 
-        let mut child = std::process::Command::new(program)
+        let mut child = hide_console(std::process::Command::new(program))
             .args(&args)
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped())
@@ -126,7 +127,7 @@ pub async fn setup_install_env(
     let _ = app.emit("setup://log", "Step 2/3: Running pixi install...");
 
     {
-        let mut child = std::process::Command::new(&pixi_cmd)
+        let mut child = hide_console(std::process::Command::new(&pixi_cmd))
             .args(["install"])
             .current_dir(&project_root)
             .stdout(std::process::Stdio::piped())
@@ -156,7 +157,7 @@ pub async fn setup_install_env(
     let _ = app.emit("setup://log", "Step 3/3: Running pixi run install-r-packages...");
 
     {
-        let mut child = std::process::Command::new(&pixi_cmd)
+        let mut child = hide_console(std::process::Command::new(&pixi_cmd))
             .args(["run", "install-r-packages"])
             .current_dir(&project_root)
             .stdout(std::process::Stdio::piped())
@@ -198,7 +199,7 @@ pub async fn setup_cancel(state: State<'_, SetupProcess>) -> Result<(), String> 
         }
         #[cfg(windows)]
         {
-            let _ = std::process::Command::new("taskkill")
+            let _ = hide_console(std::process::Command::new("taskkill"))
                 .args(["/PID", &pid.to_string(), "/F"])
                 .output();
         }
@@ -216,7 +217,7 @@ pub async fn setup_pull_docker(
     let _ = app.emit("setup://log", "Pulling Docker image jyryu3161/promise...");
     let _ = app.emit("setup://progress", serde_json::json!({ "step": 1, "total": 1, "message": "Pulling Docker image..." }));
 
-    let mut child = std::process::Command::new("docker")
+    let mut child = hide_console(std::process::Command::new("docker"))
         .args(["pull", "jyryu3161/promise"])
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
@@ -271,7 +272,7 @@ fn check_r(
     // Try pixi run Rscript
     if let Some(ref pixi) = pixi_path {
         if let Some(root) = project_root {
-            let output = std::process::Command::new(pixi)
+            let output = hide_console(std::process::Command::new(pixi))
                 .args(["run", "Rscript", "--version"])
                 .current_dir(root)
                 .output();
@@ -299,7 +300,7 @@ fn check_r(
 }
 
 fn get_r_version(rscript_path: &str) -> Option<String> {
-    std::process::Command::new(rscript_path)
+    hide_console(std::process::Command::new(rscript_path))
         .args(["--version"])
         .output()
         .ok()
@@ -322,7 +323,7 @@ fn check_packages(r_path: &Option<String>, project_root: &Option<std::path::Path
     // Quick check: test a few essential packages
     let check_code = "cat(all(sapply(c('survival','glmnet','yaml','ggplot2'), function(p) requireNamespace(p, quietly=TRUE))))";
 
-    let mut cmd = std::process::Command::new(&rscript);
+    let mut cmd = hide_console(std::process::Command::new(&rscript));
     cmd.args(["-e", check_code]);
 
     if let Some(root) = project_root {
@@ -343,7 +344,19 @@ fn check_packages(r_path: &Option<String>, project_root: &Option<std::path::Path
 }
 
 fn check_docker_daemon() -> bool {
-    std::process::Command::new("docker")
+    // On Windows, verify docker.exe is a real installation.
+    // Windows App Execution Aliases (in WindowsApps) are stubs that
+    // show an OS error dialog when Docker Desktop is not installed.
+    #[cfg(windows)]
+    {
+        match find_executable("docker") {
+            Some(path) if path.contains("WindowsApps") => return false,
+            None => return false,
+            _ => {}
+        }
+    }
+
+    hide_console(std::process::Command::new("docker"))
         .args(["info"])
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
@@ -353,7 +366,7 @@ fn check_docker_daemon() -> bool {
 }
 
 fn check_docker_image(image: &str) -> bool {
-    std::process::Command::new("docker")
+    hide_console(std::process::Command::new("docker"))
         .args(["image", "inspect", image])
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())

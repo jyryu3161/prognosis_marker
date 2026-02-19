@@ -150,31 +150,45 @@ save_plot <- function(plot_obj, filename_base, width_inch = 7, height_inch = 5, 
       tiff(filename = paste0(filename_base, ".tiff"), width = width_inch * 300, height = height_inch * 300, units = "px", res = 300, compression = "lzw")
       print(plot_obj)
       dev.off()
-    }, error = function(e) { cat(paste("STEPWISE_LOG:Warning - Failed to save TIFF:", e$message, "\n"), file = stderr()) })
-    
+    }, error = function(e) {
+      try(dev.off(), silent = TRUE)
+      cat(paste("STEPWISE_LOG:Warning - Failed to save TIFF:", e$message, "\n"), file = stderr())
+    })
+
     tryCatch({
       if (requireNamespace("svglite", quietly = TRUE)) {
         svglite::svglite(file = paste0(filename_base, ".svg"), width = width_inch, height = height_inch)
-        print(plot_obj)
-        dev.off()
       } else {
         svg(filename = paste0(filename_base, ".svg"), width = width_inch, height = height_inch)
-        print(plot_obj)
-        dev.off()
       }
-    }, error = function(e) { cat(paste("STEPWISE_LOG:Warning - Failed to save SVG:", e$message, "\n"), file = stderr()) })
+      print(plot_obj)
+      dev.off()
+    }, error = function(e) {
+      try(dev.off(), silent = TRUE)
+      cat(paste("STEPWISE_LOG:Warning - Failed to save SVG:", e$message, "\n"), file = stderr())
+    })
   } else {
     tryCatch({
       tiff(filename = paste0(filename_base, ".tiff"), width = width_inch * 300, height = height_inch * 300, units = "px", res = 300, compression = "lzw")
       print(plot_obj)
       dev.off()
-    }, error = function(e) { cat(paste("STEPWISE_LOG:Warning - Failed to save TIFF:", e$message, "\n"), file = stderr()) })
-    
+    }, error = function(e) {
+      try(dev.off(), silent = TRUE)
+      cat(paste("STEPWISE_LOG:Warning - Failed to save TIFF:", e$message, "\n"), file = stderr())
+    })
+
     tryCatch({
-      svg(filename = paste0(filename_base, ".svg"), width = width_inch, height = height_inch)
+      if (requireNamespace("svglite", quietly = TRUE)) {
+        svglite::svglite(file = paste0(filename_base, ".svg"), width = width_inch, height = height_inch)
+      } else {
+        svg(filename = paste0(filename_base, ".svg"), width = width_inch, height = height_inch)
+      }
       print(plot_obj)
       dev.off()
-    }, error = function(e) { cat(paste("STEPWISE_LOG:Warning - Failed to save SVG:", e$message, "\n"), file = stderr()) })
+    }, error = function(e) {
+      try(dev.off(), silent = TRUE)
+      cat(paste("STEPWISE_LOG:Warning - Failed to save SVG:", e$message, "\n"), file = stderr())
+    })
   }
 }
 
@@ -748,19 +762,23 @@ PlotSurvROC <- function(dat,numSeed,SplitProp,Result,horizon){
     tiff(filename = 'figures/Surv_ROCcurve.tiff', width = 7*300, height = 3.5*300, units = "px", res = 300, compression = "lzw")
     plot_roc_func()
     dev.off()
-  }, error = function(e) { cat(paste("STEPWISE_LOG:Warning - Failed to save ROC TIFF:", e$message, "\n"), file = stderr()) })
-  
+  }, error = function(e) {
+    try(dev.off(), silent = TRUE)
+    cat(paste("STEPWISE_LOG:Warning - Failed to save ROC TIFF:", e$message, "\n"), file = stderr())
+  })
+
   tryCatch({
     if (requireNamespace("svglite", quietly = TRUE)) {
       svglite::svglite(file = 'figures/Surv_ROCcurve.svg', width = 7, height = 3.5)
-      plot_roc_func()
-      dev.off()
     } else {
       svg(filename = 'figures/Surv_ROCcurve.svg', width = 7, height = 3.5)
-      plot_roc_func()
-      dev.off()
     }
-  }, error = function(e) { cat(paste("STEPWISE_LOG:Warning - Failed to save ROC SVG:", e$message, "\n"), file = stderr()) })
+    plot_roc_func()
+    dev.off()
+  }, error = function(e) {
+    try(dev.off(), silent = TRUE)
+    cat(paste("STEPWISE_LOG:Warning - Failed to save ROC SVG:", e$message, "\n"), file = stderr())
+  })
 }
 
 PlotSurVarImp <- function(dat,Result){

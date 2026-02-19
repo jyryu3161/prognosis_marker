@@ -1,3 +1,4 @@
+use super::hide_console;
 use crate::models::config::RuntimeInfo;
 use std::process::Command;
 
@@ -7,7 +8,7 @@ pub async fn runtime_detect() -> Result<RuntimeInfo, String> {
     let pixi_path = find_executable("pixi");
 
     let r_version = if let Some(ref rpath) = r_path {
-        Command::new(rpath)
+        hide_console(Command::new(rpath))
             .args(["--version"])
             .output()
             .ok()
@@ -44,7 +45,7 @@ pub async fn runtime_check_deps() -> Result<Vec<serde_json::Value>, String> {
             "cat(requireNamespace('{}', quietly=TRUE))",
             pkg
         );
-        let output = Command::new("Rscript")
+        let output = hide_console(Command::new("Rscript"))
             .args(["-e", &check_cmd])
             .output();
 
@@ -67,7 +68,7 @@ pub async fn runtime_check_deps() -> Result<Vec<serde_json::Value>, String> {
 
 pub(crate) fn find_executable(name: &str) -> Option<String> {
     let cmd = if cfg!(windows) { "where" } else { "which" };
-    Command::new(cmd)
+    hide_console(Command::new(cmd))
         .arg(name)
         .output()
         .ok()
