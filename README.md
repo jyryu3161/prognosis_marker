@@ -12,11 +12,24 @@ AUC-driven stepwise variable selection for prognostic gene signature discovery. 
 - **Evidence-based filtering**: Open Targets Platform gene-disease association integration
 - **Publication-ready figures**: TIFF (300 DPI) and SVG outputs
 - **Desktop GUI**: Interactive analysis with real-time progress tracking
-- **Cross-platform**: Docker (all OS) + pixi (macOS/Linux)
+- **Cross-platform**: Docker (all OS) + pixi (macOS/Linux/Windows)
 
-## Quick Start
+## Install
 
-### Option A: Docker (All platforms)
+### Option A: Desktop GUI (Download)
+
+Pre-built installers are available on the [Releases](https://github.com/jyryu3161/prognosis_marker/releases) page:
+
+| Platform | File |
+|----------|------|
+| macOS (Apple Silicon) | `.dmg` |
+| macOS (Intel) | `.dmg` |
+| Windows | `.msi` / `.exe` |
+| Linux | `.deb` / `.AppImage` |
+
+> **Note**: The GUI is for configuring and launching analyses. R and pixi must be installed separately for the analysis engine. Run `./install.sh` after downloading, or use Docker for the CLI.
+
+### Option B: Docker CLI (All platforms)
 
 ```bash
 docker pull jyryu3161/promise
@@ -35,7 +48,7 @@ Windows:
 docker run --rm -v %cd%:/work jyryu3161/promise binary --config=/work/config/analysis.yaml
 ```
 
-### Option B: Native Install (macOS / Linux)
+### Option C: Native Install (macOS / Linux / Windows)
 
 ```bash
 git clone https://github.com/jyryu3161/prognosis_marker.git
@@ -59,7 +72,9 @@ pixi run Rscript Main_Survival.R --config=config/my_config.yaml
 
 ### Desktop GUI
 
-Requires [Node.js](https://nodejs.org) (v18+) and [Rust](https://rustup.rs).
+Pre-built installers: see [Releases](https://github.com/jyryu3161/prognosis_marker/releases).
+
+Or build from source (requires [Node.js](https://nodejs.org) v18+ and [Rust](https://rustup.rs)):
 
 ```bash
 ./run_gui.sh
@@ -155,5 +170,6 @@ output_dir/
 | Component | Requirement |
 |-----------|-------------|
 | **CLI (Docker)** | Docker |
-| **CLI (Native)** | macOS/Linux, pixi (auto-installed) |
-| **GUI** | Node.js >= 18, Rust >= 1.70 |
+| **CLI (Native)** | macOS/Linux/Windows, pixi (auto-installed) |
+| **GUI (Download)** | [Releases](https://github.com/jyryu3161/prognosis_marker/releases) page |
+| **GUI (Build)** | Node.js >= 18, Rust >= 1.70 |
