@@ -445,6 +445,18 @@ async fn run_via_docker(
         obj.insert("dataFile".into(), serde_json::json!(format!("/data/{}", data_filename)));
         obj.insert("outputDir".into(), serde_json::json!("/output"));
         obj.remove("backend");
+
+        // Remap evidence gene file path to Docker mount point
+        if let Some(evidence) = obj.get_mut("evidence") {
+            if let Some(ev_obj) = evidence.as_object_mut() {
+                if let Some(gene_file) = ev_obj.get("geneFile").and_then(|v| v.as_str()).map(String::from) {
+                    if let Some(filename) = PathBuf::from(&gene_file).file_name() {
+                        ev_obj.insert("geneFile".into(),
+                            serde_json::json!(format!("/evidence/{}", filename.to_string_lossy())));
+                    }
+                }
+            }
+        }
     }
 
     // Transform for R and write to temp — override workdir to Docker's /app

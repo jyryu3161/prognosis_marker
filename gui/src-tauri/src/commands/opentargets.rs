@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 const OPEN_TARGETS_API: &str = "https://api.platform.opentargets.org/api/v4/graphql";
-const PAGE_SIZE: usize = 2000;
+const PAGE_SIZE: usize = 3000;
 const SEARCH_SIZE: usize = 20;
 const CACHE_DIR: &str = "evidence/opentargets";
 
@@ -39,8 +39,14 @@ pub struct CachedEvidence {
 // --- Internal deserialization types for fetch_genes ---
 
 #[derive(Debug, Deserialize)]
+struct GqlError {
+    message: String,
+}
+
+#[derive(Debug, Deserialize)]
 struct FetchGenesResponse {
     data: Option<FetchGenesData>,
+    errors: Option<Vec<GqlError>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -249,7 +255,7 @@ pub async fn opentargets_fetch_genes(
 ) -> Result<FetchGenesResult, String> {
     let client = reqwest::Client::new();
     let mut all_genes: Vec<Gene> = Vec::new();
-    let mut cursor: usize = 0;
+    let mut page_index: usize = 0;
 
     loop {
         let gql = format!(
@@ -266,7 +272,7 @@ pub async fn opentargets_fetch_genes(
     }}
   }}
 }}"#,
-            efo_id, cursor, PAGE_SIZE
+            efo_id, page_index, PAGE_SIZE
         );
 
         let response = client
@@ -288,6 +294,13 @@ pub async fn opentargets_fetch_genes(
             .await
             .map_err(|e| format!("Failed to parse API response: {}", e))?;
 
+        // Check for GraphQL errors first
+        if let Some(errors) = &body.errors {
+            if let Some(err) = errors.first() {
+                return Err(format!("Open Targets API error: {}", err.message));
+            }
+        }
+
         let disease_data = body
             .data
             .and_then(|d| d.disease)
@@ -303,9 +316,9 @@ pub async fn opentargets_fetch_genes(
             });
         }
 
-        cursor += page_count;
+        page_index += 1;
 
-        if page_count < PAGE_SIZE || cursor >= targets.count {
+        if page_count < PAGE_SIZE || all_genes.len() >= targets.count {
             break;
         }
     }
@@ -362,8 +375,7 @@ pub async fn opentargets_list_cached() -> Result<Vec<CachedEvidence>, String> {
 
     for entry in entries.flatten() {
         let path = entry.path();
-        if path.extension().and_then(|e| e.to_str()) == Some("json")
-            && path.to_string_lossy().ends_with(".meta.json")
+        if path.to_string_lossy().ends_with(".meta.json")
         {
             if let Ok(content) = std::fs::read_to_string(&path) {
                 if let Ok(meta) = serde_json::from_str::<CacheMeta>(&content) {
@@ -385,6 +397,26 @@ pub async fn opentargets_list_cached() -> Result<Vec<CachedEvidence>, String> {
 
     cached.sort_by(|a, b| a.disease_name.cmp(&b.disease_name));
     Ok(cached)
+}
+
+/// Delete a cached evidence file (CSV + metadata).
+#[tauri::command]
+pub async fn opentargets_delete_cached(efo_id: String) -> Result<(), String> {
+    let dir = cache_dir()?;
+    let safe_id = efo_id.replace(':', "_");
+    let csv_path = dir.join(format!("{}.csv", safe_id));
+    let meta_path = dir.join(format!("{}.meta.json", safe_id));
+
+    if csv_path.exists() {
+        std::fs::remove_file(&csv_path)
+            .map_err(|e| format!("Cannot delete CSV: {}", e))?;
+    }
+    if meta_path.exists() {
+        std::fs::remove_file(&meta_path)
+            .map_err(|e| format!("Cannot delete metadata: {}", e))?;
+    }
+
+    Ok(())
 }
 
 /// Count genes in a cached CSV that pass the given score threshold.

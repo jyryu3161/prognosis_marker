@@ -49,6 +49,7 @@ pub fn run() {
             commands::opentargets::opentargets_search_diseases,
             commands::opentargets::opentargets_fetch_genes,
             commands::opentargets::opentargets_list_cached,
+            commands::opentargets::opentargets_delete_cached,
             commands::opentargets::opentargets_count_filtered,
             // Runtime
             commands::runtime::runtime_check_deps,

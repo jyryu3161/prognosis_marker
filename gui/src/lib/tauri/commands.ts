@@ -96,6 +96,10 @@ export async function listCachedEvidence(): Promise<CachedEvidence[]> {
   return invoke<CachedEvidence[]>("opentargets_list_cached");
 }
 
+export async function deleteCachedEvidence(efoId: string): Promise<void> {
+  return invoke("opentargets_delete_cached", { efoId });
+}
+
 export async function countFilteredGenes(
   filePath: string,
   scoreThreshold: number

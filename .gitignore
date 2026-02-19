@@ -4,6 +4,7 @@ survival_debug.log
 
 /data/
 /results/
+/evidence/opentargets/
 
 # R artifacts
 .Rhistory
