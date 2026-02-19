@@ -21,8 +21,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN R -e "install.packages(c( \
     'yaml', 'ggplot2', 'caret', 'ROCR', 'pROC', 'cutpointr', \
     'coefplot', 'nsROC', 'survival', 'svglite', 'tiff', \
-    'reshape2', 'gridExtra', 'survminer', 'pheatmap', \
-    'RiskRegression', 'rms', 'dca' \
+    'reshape2', 'gridExtra', 'survminer', 'pheatmap' \
   ), repos='https://cloud.r-project.org', Ncpus=4)"
 
 WORKDIR /app

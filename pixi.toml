@@ -31,9 +31,22 @@ r-locfit = ">=1.5_9.12,<2"
 r-kernlab = ">=0.9_33,<0.10"
 r-mclust = ">=6.1.1,<7"
 
+# System libraries for svglite/textshaping/systemfonts
+pkg-config = "*"
+fontconfig = "*"
+freetype = "*"
+harfbuzz = "*"
+fribidi = "*"
+r-systemfonts = "*"
+r-textshaping = "*"
+r-svglite = "*"
+
+# R packages for survminer dependency chain
+r-lme4 = "*"
+
 [tasks]
 # R package installation
-install-r-packages = "R -q -e \"install.packages(c('ROCR','pROC','cutpointr','coefplot','caret','nsROC','survival','yaml','ggplot2','dca','pheatmap','RiskRegression','rms','svglite','tiff','reshape2','gridExtra','survminer'), repos='https://cloud.r-project.org')\""
+install-r-packages = "R -q -e \"install.packages(c('ROCR','pROC','cutpointr','coefplot','caret','nsROC','survival','yaml','ggplot2','pheatmap','svglite','tiff','reshape2','gridExtra','survminer'), repos='https://cloud.r-project.org')\""
 
 # R analysis workflows
 # Note: config file should be specified via --config argument
