@@ -11,14 +11,14 @@ AUC-driven stepwise variable selection for prognostic gene signature discovery. 
 - **Stepwise selection**: Forward/backward variable selection optimizing AUC across multiple random seeds
 - **Evidence-based filtering**: Open Targets Platform gene-disease association integration
 - **Publication-ready figures**: TIFF (300 DPI) and SVG outputs
-- **Desktop GUI**: Interactive analysis with real-time progress tracking and auto-install
-- **Cross-platform**: Docker (all OS) + pixi (macOS/Linux/Windows)
+- **Desktop GUI**: Interactive analysis with real-time progress tracking
+- **Cross-platform**: macOS, Windows, Linux via Docker
 
-## Install
+## Quick Start (GUI)
 
-### Option A: Desktop GUI (Download)
+**Prerequisites**: [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running.
 
-Pre-built installers are available on the [Releases](https://github.com/jyryu3161/prognosis_marker/releases) page:
+1. Download the installer from [Releases](https://github.com/jyryu3161/prognosis_marker/releases)
 
 | Platform | File |
 |----------|------|
@@ -27,9 +27,17 @@ Pre-built installers are available on the [Releases](https://github.com/jyryu316
 | Windows | `.msi` / `.exe` |
 | Linux | `.deb` / `.AppImage` |
 
-> **No manual setup required.** On first launch, the GUI detects your environment and offers a one-click "Install Analysis Environment" button that automatically installs pixi, R, and all required packages (~10-15 minutes). If Docker Desktop is installed, you can also choose "Use Docker Instead" for instant setup.
+2. Install and launch the app
+3. On first launch, the app checks for Docker Desktop
+   - If Docker is not running, a download link is shown
+   - If Docker is ready, click **"Download Analysis Image"** (one-time, ~2-3 GB)
+4. Once the image is downloaded, the main analysis UI opens automatically
 
-### Option B: Docker CLI (All platforms)
+> No R, pixi, or any other dependencies needed. Docker handles everything.
+
+## CLI Usage
+
+### Docker (Recommended)
 
 ```bash
 docker pull jyryu3161/promise
@@ -48,54 +56,20 @@ Windows:
 docker run --rm -v %cd%:/work jyryu3161/promise binary --config=/work/config/analysis.yaml
 ```
 
-### Option C: Native Install (macOS / Linux / Windows)
+> When using Docker CLI, set paths relative to `/work/` in your config (e.g., `data_file: "/work/data/my_data.csv"`).
+
+### Native (Advanced)
+
+For users who prefer running R directly without Docker:
 
 ```bash
 git clone https://github.com/jyryu3161/prognosis_marker.git
 cd prognosis_marker
-./install.sh
-```
+./install.sh   # installs pixi + R + packages
 
-## Usage
-
-### Command Line
-
-```bash
-# Using the run script
 ./run_analysis.sh binary --config config/example_analysis.yaml
 ./run_analysis.sh survival --config config/example_analysis.yaml
-
-# Or pixi directly
-pixi run Rscript Main_Binary.R --config=config/my_config.yaml
-pixi run Rscript Main_Survival.R --config=config/my_config.yaml
 ```
-
-### Desktop GUI
-
-Pre-built installers: see [Releases](https://github.com/jyryu3161/prognosis_marker/releases).
-
-The GUI includes built-in environment management:
-1. Download and install the app
-2. On first launch, click **"Install Analysis Environment"** (auto-installs pixi + R + packages)
-3. Or switch to **Docker mode** in Settings if Docker Desktop is available
-
-To build from source (requires [Node.js](https://nodejs.org) v18+ and [Rust](https://rustup.rs)):
-
-```bash
-./run_gui.sh
-```
-
-### Docker Wrapper Scripts
-
-```bash
-# Mac/Linux
-./run_docker.sh binary --config=/work/config/analysis.yaml
-
-# Windows
-run_docker.bat binary --config=/work/config/analysis.yaml
-```
-
-> When using Docker, set paths relative to `/work/` in your config (e.g., `data_file: "/work/data/my_data.csv"`).
 
 ## Configuration
 
@@ -169,18 +143,17 @@ output_dir/
   ```bash
   xattr -cr /Applications/PROMISE.app
   ```
-- **GUI auto-install fails**: Check your internet connection. You can also run `./install.sh` manually from the project directory, or switch to Docker mode in Settings.
-- **Docker mode not available**: Ensure Docker Desktop is installed and running. The GUI auto-detects Docker on startup.
-- **Missing packages**: `pixi install && pixi run install-r-packages`
-- **"Package not found"**: Use `pixi run Rscript ...` instead of `Rscript ...` directly
+- **"Docker Desktop Required" screen**: Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) and make sure it is running before launching the app.
+- **Image download fails**: Check your internet connection. You can also pull manually: `docker pull jyryu3161/promise`
+- **Analysis fails in Docker mode**: Check that the data file path and output directory are accessible. Docker needs permission to mount those directories.
 - **Config errors**: Ensure column names in YAML match CSV headers exactly
-- **Permission denied**: `chmod +x install.sh run_analysis.sh run_gui.sh`
+- **Permission denied (CLI)**: `chmod +x install.sh run_analysis.sh run_gui.sh`
 
 ## Requirements
 
 | Component | Requirement |
 |-----------|-------------|
+| **GUI** | [Docker Desktop](https://www.docker.com/products/docker-desktop/) |
 | **CLI (Docker)** | Docker |
-| **CLI (Native)** | macOS/Linux/Windows, pixi (auto-installed) |
-| **GUI (Download)** | [Releases](https://github.com/jyryu3161/prognosis_marker/releases) page |
-| **GUI (Build)** | Node.js >= 18, Rust >= 1.70 |
+| **CLI (Native)** | macOS/Linux/Windows, pixi (auto-installed via `install.sh`) |
+| **GUI (Build from source)** | Node.js >= 18, Rust >= 1.70 |

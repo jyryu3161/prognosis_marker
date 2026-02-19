@@ -447,8 +447,11 @@ async fn run_via_docker(
         obj.remove("backend");
     }
 
-    // Transform for R and write to temp
-    let r_config = transform_config_for_r(&docker_config);
+    // Transform for R and write to temp — override workdir to Docker's /app
+    let mut r_config = transform_config_for_r(&docker_config);
+    if let Some(obj) = r_config.as_object_mut() {
+        obj.insert("workdir".into(), serde_json::json!("/app"));
+    }
     let docker_yaml = serde_yaml::to_string(&r_config)
         .map_err(|e| String::from(AppError::config_parse_error(&format!("YAML serialization: {}", e))))?;
 
@@ -463,16 +466,21 @@ async fn run_via_docker(
     std::fs::write(&docker_config_path, &docker_yaml)
         .map_err(|e| String::from(AppError::analysis_failed(&format!("Cannot write docker config: {}", e))))?;
 
+    // Normalize path for Docker volume mounts (Windows backslashes → forward slashes)
+    fn docker_path(p: &std::path::Path) -> String {
+        p.to_string_lossy().replace('\\', "/")
+    }
+
     // Build docker command
     let mut docker_args = vec![
         "run".to_string(),
         "--rm".to_string(),
         "-v".to_string(),
-        format!("{}:/data:ro", data_dir.to_string_lossy()),
+        format!("{}:/data:ro", docker_path(data_dir)),
         "-v".to_string(),
-        format!("{}:/output", output_path.to_string_lossy()),
+        format!("{}:/output", docker_path(&output_path)),
         "-v".to_string(),
-        format!("{}:/config.yaml:ro", docker_config_path.to_string_lossy()),
+        format!("{}:/config.yaml:ro", docker_path(&docker_config_path)),
     ];
 
     // Mount evidence file directory if present
@@ -481,7 +489,7 @@ async fn run_via_docker(
             if let Some(gene_file) = evidence.get("geneFile").and_then(|v| v.as_str()) {
                 if let Some(ev_dir) = PathBuf::from(gene_file).parent() {
                     docker_args.push("-v".to_string());
-                    docker_args.push(format!("{}:/evidence:ro", ev_dir.to_string_lossy()));
+                    docker_args.push(format!("{}:/evidence:ro", docker_path(ev_dir)));
                 }
             }
         }
