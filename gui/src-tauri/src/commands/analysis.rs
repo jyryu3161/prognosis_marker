@@ -167,7 +167,7 @@ pub async fn analysis_run(
 
     let tmp_dir = std::env::temp_dir();
     let config_path = tmp_dir.join(format!(
-        "prognosis_marker_{}.yaml",
+        "promise_{}.yaml",
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
@@ -457,7 +457,7 @@ async fn run_via_docker(
 
     let tmp_dir = std::env::temp_dir();
     let docker_config_path = tmp_dir.join(format!(
-        "prognosis_marker_docker_{}.yaml",
+        "promise_docker_{}.yaml",
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
