@@ -158,8 +158,8 @@ export function SettingsPage() {
       <section className="border border-border rounded-lg p-4 space-y-3">
         <h3 className="text-sm font-medium">About</h3>
         <div className="text-sm text-muted-foreground space-y-1">
-          <p>Prognosis Marker v0.1.0</p>
-          <p>Gene Signature Discovery Platform</p>
+          <p>PROMISE v0.1.0</p>
+          <p>PROgnostic Marker Identification and Survival Evaluation</p>
           <p>Cross-platform desktop application powered by Tauri</p>
         </div>
       </section>

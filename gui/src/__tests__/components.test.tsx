@@ -59,7 +59,7 @@ describe("Sidebar", () => {
     const onPageChange = vi.fn();
     render(<Sidebar currentPage="setup" onPageChange={onPageChange} analysisRunning={false} />);
 
-    expect(screen.getByText("Prognosis Marker")).toBeDefined();
+    expect(screen.getByText("PROMISE")).toBeDefined();
     expect(screen.getByText("v0.1.0")).toBeDefined();
   });
 

@@ -256,8 +256,8 @@ pub async fn analysis_run(
         .map_err(|e| String::from(AppError::runtime_not_found(&format!("Failed to start R: {} (tried: {})", e, cmd_program))))?;
 
     // Emit log showing which R runtime is being used
-    let _ = app.emit("analysis://log", format!("[Prognosis Marker] Using R: {}", cmd_program));
-    let _ = app.emit("analysis://log", format!("[Prognosis Marker] Working dir: {}", project_root.display()));
+    let _ = app.emit("analysis://log", format!("[PROMISE] Using R: {}", cmd_program));
+    let _ = app.emit("analysis://log", format!("[PROMISE] Working dir: {}", project_root.display()));
 
     // Store PID for cancellation
     let pid = child.id();

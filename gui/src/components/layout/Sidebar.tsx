@@ -18,8 +18,8 @@ export function Sidebar({ currentPage, onPageChange, analysisRunning }: SidebarP
   return (
     <aside className="w-48 border-r border-border bg-secondary/30 flex flex-col">
       <div className="p-4 border-b border-border">
-        <h1 className="text-sm font-bold text-primary">Prognosis Marker</h1>
-        <p className="text-xs text-muted-foreground mt-0.5">Gene Signature Discovery</p>
+        <h1 className="text-sm font-bold text-primary">PROMISE</h1>
+        <p className="text-xs text-muted-foreground mt-0.5">PROgnostic Marker Identification and Survival Evaluation</p>
       </div>
       <nav className="flex-1 p-2 space-y-1">
         {navItems.map((item) => (
