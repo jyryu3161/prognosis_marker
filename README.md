@@ -160,6 +160,10 @@ output_dir/
 
 ## Troubleshooting
 
+- **macOS "damaged" error**: The app is not Apple-signed. Remove the quarantine flag after installing:
+  ```bash
+  xattr -cr /Applications/PROMISE.app
+  ```
 - **Missing packages**: `pixi install && pixi run install-r-packages`
 - **"Package not found"**: Use `pixi run Rscript ...` instead of `Rscript ...` directly
 - **Config errors**: Ensure column names in YAML match CSV headers exactly
