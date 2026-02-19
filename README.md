@@ -11,7 +11,7 @@ AUC-driven stepwise variable selection for prognostic gene signature discovery. 
 - **Stepwise selection**: Forward/backward variable selection optimizing AUC across multiple random seeds
 - **Evidence-based filtering**: Open Targets Platform gene-disease association integration
 - **Publication-ready figures**: TIFF (300 DPI) and SVG outputs
-- **Desktop GUI**: Interactive analysis with real-time progress tracking
+- **Desktop GUI**: Interactive analysis with real-time progress tracking and auto-install
 - **Cross-platform**: Docker (all OS) + pixi (macOS/Linux/Windows)
 
 ## Install
@@ -27,7 +27,7 @@ Pre-built installers are available on the [Releases](https://github.com/jyryu316
 | Windows | `.msi` / `.exe` |
 | Linux | `.deb` / `.AppImage` |
 
-> **Note**: The GUI is for configuring and launching analyses. R and pixi must be installed separately for the analysis engine. Run `./install.sh` after downloading, or use Docker for the CLI.
+> **No manual setup required.** On first launch, the GUI detects your environment and offers a one-click "Install Analysis Environment" button that automatically installs pixi, R, and all required packages (~10-15 minutes). If Docker Desktop is installed, you can also choose "Use Docker Instead" for instant setup.
 
 ### Option B: Docker CLI (All platforms)
 
@@ -74,7 +74,12 @@ pixi run Rscript Main_Survival.R --config=config/my_config.yaml
 
 Pre-built installers: see [Releases](https://github.com/jyryu3161/prognosis_marker/releases).
 
-Or build from source (requires [Node.js](https://nodejs.org) v18+ and [Rust](https://rustup.rs)):
+The GUI includes built-in environment management:
+1. Download and install the app
+2. On first launch, click **"Install Analysis Environment"** (auto-installs pixi + R + packages)
+3. Or switch to **Docker mode** in Settings if Docker Desktop is available
+
+To build from source (requires [Node.js](https://nodejs.org) v18+ and [Rust](https://rustup.rs)):
 
 ```bash
 ./run_gui.sh
@@ -164,6 +169,8 @@ output_dir/
   ```bash
   xattr -cr /Applications/PROMISE.app
   ```
+- **GUI auto-install fails**: Check your internet connection. You can also run `./install.sh` manually from the project directory, or switch to Docker mode in Settings.
+- **Docker mode not available**: Ensure Docker Desktop is installed and running. The GUI auto-detects Docker on startup.
 - **Missing packages**: `pixi install && pixi run install-r-packages`
 - **"Package not found"**: Use `pixi run Rscript ...` instead of `Rscript ...` directly
 - **Config errors**: Ensure column names in YAML match CSV headers exactly

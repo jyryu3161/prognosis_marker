@@ -65,14 +65,17 @@ pub async fn runtime_check_deps() -> Result<Vec<serde_json::Value>, String> {
     Ok(results)
 }
 
-fn find_executable(name: &str) -> Option<String> {
-    Command::new("which")
+pub(crate) fn find_executable(name: &str) -> Option<String> {
+    let cmd = if cfg!(windows) { "where" } else { "which" };
+    Command::new(cmd)
         .arg(name)
         .output()
         .ok()
         .and_then(|out| {
             if out.status.success() {
-                Some(String::from_utf8_lossy(&out.stdout).trim().to_string())
+                // `where` on Windows may return multiple lines; take the first
+                let output = String::from_utf8_lossy(&out.stdout);
+                output.lines().next().map(|l| l.trim().to_string())
             } else {
                 None
             }

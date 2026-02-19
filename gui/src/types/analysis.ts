@@ -79,6 +79,21 @@ export interface RuntimeInfo {
   rVersion: string | null;
 }
 
+/** Environment status (comprehensive check) */
+export interface EnvStatus {
+  pixiInstalled: boolean;
+  rAvailable: boolean;
+  packagesOk: boolean;
+  dockerAvailable: boolean;
+  dockerImagePresent: boolean;
+  pixiPath: string | null;
+  rPath: string | null;
+  rVersion: string | null;
+}
+
+/** Execution backend */
+export type ExecutionBackend = "local" | "docker";
+
 /** Open Targets disease entry */
 export interface OTDisease {
   efo_id: string;

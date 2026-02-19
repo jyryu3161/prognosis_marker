@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { DataFileInfo, RuntimeInfo, TcgaPreset, AnalysisConfig, OTDisease, FetchGenesResult, CachedEvidence, FilteredCount } from "@/types/analysis";
+import type { DataFileInfo, RuntimeInfo, TcgaPreset, AnalysisConfig, OTDisease, FetchGenesResult, CachedEvidence, FilteredCount, EnvStatus } from "@/types/analysis";
 
 export interface DepCheckResult {
   package: string;
@@ -104,4 +104,21 @@ export async function countFilteredGenes(
     filePath,
     scoreThreshold,
   });
+}
+
+// Setup / Environment
+export async function checkEnv(): Promise<EnvStatus> {
+  return invoke<EnvStatus>("setup_check_env");
+}
+
+export async function installEnv(): Promise<void> {
+  return invoke("setup_install_env");
+}
+
+export async function cancelSetup(): Promise<void> {
+  return invoke("setup_cancel");
+}
+
+export async function pullDockerImage(): Promise<void> {
+  return invoke("setup_pull_docker");
 }

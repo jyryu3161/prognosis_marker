@@ -2,6 +2,7 @@ mod commands;
 mod models;
 
 use commands::analysis::AnalysisProcess;
+use commands::setup::SetupProcess;
 use std::sync::Mutex;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -19,7 +20,10 @@ pub fn run() {
             Ok(())
         })
         .manage(AnalysisProcess {
-            child: Mutex::new(None), // stores PID
+            child: Mutex::new(None),
+        })
+        .manage(SetupProcess {
+            child: Mutex::new(None),
         })
         .invoke_handler(tauri::generate_handler![
             // Runtime
@@ -48,6 +52,11 @@ pub fn run() {
             commands::opentargets::opentargets_count_filtered,
             // Runtime
             commands::runtime::runtime_check_deps,
+            // Setup
+            commands::setup::setup_check_env,
+            commands::setup::setup_install_env,
+            commands::setup::setup_cancel,
+            commands::setup::setup_pull_docker,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

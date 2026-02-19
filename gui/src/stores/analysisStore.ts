@@ -6,6 +6,7 @@ import type {
   DataFileInfo,
   PAdjustMethod,
 } from "@/types/analysis";
+import { useConfigStore } from "@/stores/configStore";
 import type { AnalysisResult } from "@/types/results";
 
 interface AnalysisState {
@@ -148,14 +149,17 @@ export const useAnalysisStore = create<AnalysisState>()((set, get) => ({
         : null,
     };
 
+    const backend = useConfigStore.getState().backend;
+
     if (s.analysisType === "binary") {
-      return { ...base, type: "binary" as const, outcome: s.outcome };
+      return { ...base, type: "binary" as const, outcome: s.outcome, backend };
     }
     return {
       ...base,
       type: "survival" as const,
       event: s.event,
       horizon: s.horizon,
+      backend,
     };
   },
 }));

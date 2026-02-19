@@ -10,7 +10,7 @@ pub struct AnalysisProcess {
 
 /// Detect project root by walking up from the executable/resource dir
 /// looking for Main_Binary.R (the marker file).
-fn find_project_root() -> Option<PathBuf> {
+pub(crate) fn find_project_root() -> Option<PathBuf> {
     // Try common locations
     let candidates = [
         // Development: cwd might already be project root
@@ -176,11 +176,22 @@ pub async fn analysis_run(
     std::fs::write(&config_path, &yaml_str)
         .map_err(|e| String::from(AppError::analysis_failed(&format!("Cannot write temp config: {}", e))))?;
 
-    // 2. Determine analysis script and project root
+    // 2. Determine analysis type and backend
     let analysis_type = config
         .get("type")
         .and_then(|v| v.as_str())
         .unwrap_or("binary");
+
+    let backend = config
+        .get("backend")
+        .and_then(|v| v.as_str())
+        .unwrap_or("local");
+
+    // Docker execution mode
+    if backend == "docker" {
+        let at = analysis_type.to_string();
+        return run_via_docker(config, &at, &config_path, &yaml_str, app, state).await;
+    }
 
     let script = match analysis_type {
         "survival" => "Main_Survival.R",
@@ -390,6 +401,188 @@ pub async fn analysis_cancel(state: State<'_, AnalysisProcess>) -> Result<(), St
     } else {
         Ok(())
     }
+}
+
+/// Run analysis via Docker container
+async fn run_via_docker(
+    config: serde_json::Value,
+    analysis_type: &str,
+    _config_path: &PathBuf,
+    _yaml_str: &str,
+    app: tauri::AppHandle,
+    state: State<'_, AnalysisProcess>,
+) -> Result<(), String> {
+    let data_file = config
+        .get("dataFile")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+    let output_dir = config
+        .get("outputDir")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+
+    if data_file.is_empty() || output_dir.is_empty() {
+        return Err(String::from(AppError::analysis_failed(
+            "dataFile and outputDir are required for Docker mode.",
+        )));
+    }
+
+    let data_path = PathBuf::from(data_file);
+    let data_dir = data_path
+        .parent()
+        .ok_or_else(|| String::from(AppError::analysis_failed("Invalid data file path")))?;
+    let data_filename = data_path
+        .file_name()
+        .ok_or_else(|| String::from(AppError::analysis_failed("Invalid data file name")))?
+        .to_string_lossy();
+
+    let output_path = PathBuf::from(output_dir);
+    let _ = std::fs::create_dir_all(&output_path);
+
+    // Build docker config with remapped paths
+    let mut docker_config = config.clone();
+    if let Some(obj) = docker_config.as_object_mut() {
+        obj.insert("dataFile".into(), serde_json::json!(format!("/data/{}", data_filename)));
+        obj.insert("outputDir".into(), serde_json::json!("/output"));
+        obj.remove("backend");
+    }
+
+    // Transform for R and write to temp
+    let r_config = transform_config_for_r(&docker_config);
+    let docker_yaml = serde_yaml::to_string(&r_config)
+        .map_err(|e| String::from(AppError::config_parse_error(&format!("YAML serialization: {}", e))))?;
+
+    let tmp_dir = std::env::temp_dir();
+    let docker_config_path = tmp_dir.join(format!(
+        "prognosis_marker_docker_{}.yaml",
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_millis()
+    ));
+    std::fs::write(&docker_config_path, &docker_yaml)
+        .map_err(|e| String::from(AppError::analysis_failed(&format!("Cannot write docker config: {}", e))))?;
+
+    // Build docker command
+    let mut docker_args = vec![
+        "run".to_string(),
+        "--rm".to_string(),
+        "-v".to_string(),
+        format!("{}:/data:ro", data_dir.to_string_lossy()),
+        "-v".to_string(),
+        format!("{}:/output", output_path.to_string_lossy()),
+        "-v".to_string(),
+        format!("{}:/config.yaml:ro", docker_config_path.to_string_lossy()),
+    ];
+
+    // Mount evidence file directory if present
+    if let Some(evidence) = config.get("evidence") {
+        if !evidence.is_null() {
+            if let Some(gene_file) = evidence.get("geneFile").and_then(|v| v.as_str()) {
+                if let Some(ev_dir) = PathBuf::from(gene_file).parent() {
+                    docker_args.push("-v".to_string());
+                    docker_args.push(format!("{}:/evidence:ro", ev_dir.to_string_lossy()));
+                }
+            }
+        }
+    }
+
+    docker_args.push("jyryu3161/promise".to_string());
+    docker_args.push(analysis_type.to_string());
+    docker_args.push("--config=/config.yaml".to_string());
+
+    let _ = app.emit("analysis://log", format!("[PROMISE] Docker mode: docker {}", docker_args.join(" ")));
+
+    let mut child = std::process::Command::new("docker")
+        .args(&docker_args)
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .map_err(|e| String::from(AppError::analysis_failed(&format!("Failed to start Docker: {}", e))))?;
+
+    let pid = child.id();
+    {
+        let mut guard = state.child.lock().map_err(|e| e.to_string())?;
+        *guard = Some(pid);
+    }
+
+    let stdout = child.stdout.take();
+    let stderr = child.stderr.take();
+
+    // Create log file in output directory
+    let log_file: Arc<Mutex<Option<std::fs::File>>> = {
+        let log_path = output_path.join("analysis.log");
+        match std::fs::File::create(&log_path) {
+            Ok(f) => Arc::new(Mutex::new(Some(f))),
+            Err(_) => Arc::new(Mutex::new(None)),
+        }
+    };
+
+    let app_handle = app.clone();
+
+    std::thread::spawn(move || {
+        let app_for_stderr = app_handle.clone();
+        let log_for_stderr = Arc::clone(&log_file);
+        let stderr_thread = stderr.map(|stderr| {
+            std::thread::spawn(move || {
+                let reader = BufReader::new(stderr);
+                for line in reader.lines() {
+                    if let Ok(line) = line {
+                        if let Ok(mut guard) = log_for_stderr.lock() {
+                            if let Some(ref mut f) = *guard {
+                                let _ = writeln!(f, "[stderr] {}", line);
+                            }
+                        }
+                        if let Some(progress) = parse_progress_line(&line) {
+                            let _ = app_for_stderr.emit("analysis://progress", serde_json::json!(progress));
+                        }
+                        let _ = app_for_stderr.emit("analysis://log", &line);
+                    }
+                }
+            })
+        });
+
+        if let Some(stdout) = stdout {
+            let reader = BufReader::new(stdout);
+            for line in reader.lines() {
+                if let Ok(line) = line {
+                    if let Ok(mut guard) = log_file.lock() {
+                        if let Some(ref mut f) = *guard {
+                            let _ = writeln!(f, "[stdout] {}", line);
+                        }
+                    }
+                    let _ = app_handle.emit("analysis://log", &line);
+                }
+            }
+        }
+
+        if let Some(handle) = stderr_thread {
+            let _ = handle.join();
+        }
+
+        match child.wait() {
+            Ok(status) => {
+                let _ = app_handle.emit(
+                    "analysis://complete",
+                    serde_json::json!({
+                        "success": status.success(),
+                        "code": status.code()
+                    }),
+                );
+            }
+            Err(e) => {
+                let _ = app_handle.emit(
+                    "analysis://error",
+                    serde_json::json!({ "message": e.to_string() }),
+                );
+            }
+        }
+
+        let process_state = app_handle.state::<AnalysisProcess>();
+        let _ = process_state.child.lock().map(|mut guard| *guard = None);
+    });
+
+    Ok(())
 }
 
 /// Parse R progress output lines.

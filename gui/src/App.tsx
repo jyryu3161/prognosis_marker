@@ -4,17 +4,40 @@ import { Sidebar, type Page } from "@/components/layout/Sidebar";
 import { SetupPage } from "@/pages/SetupPage";
 import { ResultsPage } from "@/pages/ResultsPage";
 import { SettingsPage } from "@/pages/SettingsPage";
+import { EnvironmentSetup } from "@/components/environment/EnvironmentSetup";
 import { useAnalysisStore } from "@/stores/analysisStore";
 import { useConfigStore } from "@/stores/configStore";
-import { detectRuntime } from "@/lib/tauri/commands";
+import { checkEnv } from "@/lib/tauri/commands";
 
 function App() {
   const [currentPage, setCurrentPage] = useState<Page>("setup");
   const status = useAnalysisStore((s) => s.status);
   const setRuntimeInfo = useConfigStore((s) => s.setRuntimeInfo);
+  const envStatus = useConfigStore((s) => s.envStatus);
+  const setEnvStatus = useConfigStore((s) => s.setEnvStatus);
+  const setEnvChecking = useConfigStore((s) => s.setEnvChecking);
+  const backend = useConfigStore((s) => s.backend);
+  const setupStatus = useConfigStore((s) => s.setupStatus);
 
   const hasResults =
     status === "completed" || status === "running" || status === "failed";
+
+  // Determine if environment is ready
+  const envReady = envStatus
+    ? (envStatus.rAvailable && envStatus.packagesOk) ||
+      (backend === "docker" && envStatus.dockerImagePresent)
+    : false;
+
+  // Show main UI after setup completes (with brief delay for UX)
+  const [showMain, setShowMain] = useState(false);
+  useEffect(() => {
+    if (envReady) {
+      const timer = setTimeout(() => setShowMain(true), setupStatus === "completed" ? 1000 : 0);
+      return () => clearTimeout(timer);
+    } else {
+      setShowMain(false);
+    }
+  }, [envReady, setupStatus]);
 
   // Warn before closing if analysis is running
   useEffect(() => {
@@ -27,12 +50,22 @@ function App() {
     return () => window.removeEventListener("beforeunload", handler);
   }, []);
 
-  // Detect R runtime on startup
+  // Check environment on startup
   useEffect(() => {
-    detectRuntime()
-      .then(setRuntimeInfo)
-      .catch((e: unknown) => console.error("Runtime detection failed:", e));
-  }, [setRuntimeInfo]);
+    setEnvChecking(true);
+    checkEnv()
+      .then((status) => {
+        setEnvStatus(status);
+        // Also populate legacy runtime info
+        setRuntimeInfo({
+          rPath: status.rPath,
+          pixiPath: status.pixiPath,
+          rVersion: status.rVersion,
+        });
+      })
+      .catch((e: unknown) => console.error("Env check failed:", e))
+      .finally(() => setEnvChecking(false));
+  }, [setEnvStatus, setEnvChecking, setRuntimeInfo]);
 
   // Listen for analysis events from Rust backend
   useEffect(() => {
@@ -91,6 +124,15 @@ function App() {
       unlisten.forEach((u) => u());
     };
   }, []);
+
+  // Environment gate: show setup screen if env not ready
+  if (!showMain) {
+    return (
+      <div className="flex h-screen w-screen overflow-hidden bg-background text-foreground">
+        <EnvironmentSetup />
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-background text-foreground">

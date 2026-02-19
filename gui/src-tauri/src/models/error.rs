@@ -54,6 +54,22 @@ impl AppError {
             details: Some(details.to_string()),
         }
     }
+
+    pub fn setup_failed(details: &str) -> Self {
+        Self {
+            code: "E007".to_string(),
+            message: "Environment setup failed.".to_string(),
+            details: Some(details.to_string()),
+        }
+    }
+
+    pub fn docker_not_found(details: &str) -> Self {
+        Self {
+            code: "E008".to_string(),
+            message: "Docker is not available.".to_string(),
+            details: Some(details.to_string()),
+        }
+    }
 }
 
 // Allow AppError to be returned from Tauri commands
