@@ -31,7 +31,7 @@ function App() {
   useEffect(() => {
     detectRuntime()
       .then(setRuntimeInfo)
-      .catch((e) => console.error("Runtime detection failed:", e));
+      .catch((e: unknown) => console.error("Runtime detection failed:", e));
   }, [setRuntimeInfo]);
 
   // Listen for analysis events from Rust backend

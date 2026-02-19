@@ -131,7 +131,6 @@ export function AdvancedOptionsSection() {
   const evidenceScoreThreshold = useAnalysisStore((s) => s.evidenceScoreThreshold);
   const selectedDiseaseId = useAnalysisStore((s) => s.selectedDiseaseId);
   const selectedDiseaseName = useAnalysisStore((s) => s.selectedDiseaseName);
-  const fetchedGeneCount = useAnalysisStore((s) => s.fetchedGeneCount);
   const isFetchingGenes = useAnalysisStore((s) => s.isFetchingGenes);
   const setParam = useAnalysisStore((s) => s.setParam);
 

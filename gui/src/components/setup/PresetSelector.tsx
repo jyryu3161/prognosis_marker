@@ -21,7 +21,7 @@ export function PresetSelector() {
         setPresets(p);
         storePresets(p);
       })
-      .catch((e) => console.error("Failed to load presets:", e));
+      .catch((e: unknown) => console.error("Failed to load presets:", e));
   }, [storePresets]);
 
   const handlePresetChange = async (presetId: string) => {

@@ -115,13 +115,13 @@ function PlotViewer({
     const path = `${outputDir}/${selectedPlot}`;
     setError(null);
     readImageBase64(path)
-      .then((data) => {
+      .then((data: string) => {
         const ext = selectedPlot.split(".").pop()?.toLowerCase();
         const mime =
           ext === "svg" ? "image/svg+xml" : "image/png";
         setImageData(`data:${mime};base64,${data}`);
       })
-      .catch((e) => {
+      .catch((e: unknown) => {
         setError(`Failed to load: ${e}`);
         setImageData(null);
       });

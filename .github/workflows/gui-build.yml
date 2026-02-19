@@ -13,9 +13,7 @@ jobs:
       matrix:
         include:
           - platform: macos-latest
-            label: macOS-ARM64
-          - platform: macos-13
-            label: macOS-Intel
+            label: macOS
           - platform: ubuntu-22.04
             label: Linux
           - platform: windows-latest
@@ -68,8 +66,7 @@ jobs:
             PROMISE GUI desktop application.
 
             Download the installer for your platform:
-            - **macOS (Apple Silicon)**: `.dmg` (ARM64)
-            - **macOS (Intel)**: `.dmg` (x86_64)
+            - **macOS**: `.dmg` (Apple Silicon)
             - **Windows**: `.msi` or `.exe`
             - **Linux**: `.deb` or `.AppImage`
           releaseDraft: true
