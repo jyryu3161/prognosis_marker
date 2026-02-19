@@ -22,7 +22,7 @@ AUC-driven stepwise variable selection for prognostic gene signature discovery. 
 Docker is the easiest way to get started, especially on Windows where pixi is not supported.
 
 ```bash
-docker pull jyryu3161/prognosis-marker
+docker pull jyryu3161/promise
 ```
 
 That's it. See [Docker Usage](#docker) below for running analyses.
@@ -85,17 +85,17 @@ Mount your working directory as `/work` and use `/work/` paths in config:
 
 ```bash
 # Binary classification
-docker run --rm -v $(pwd):/work jyryu3161/prognosis-marker \
+docker run --rm -v $(pwd):/work jyryu3161/promise \
   binary --config=/work/config/analysis.yaml
 
 # Survival analysis
-docker run --rm -v $(pwd):/work jyryu3161/prognosis-marker \
+docker run --rm -v $(pwd):/work jyryu3161/promise \
   survival --config=/work/config/analysis.yaml
 ```
 
 Windows (Command Prompt):
 ```bat
-docker run --rm -v %cd%:/work jyryu3161/prognosis-marker ^
+docker run --rm -v %cd%:/work jyryu3161/promise ^
   binary --config=/work/config/analysis.yaml
 ```
 

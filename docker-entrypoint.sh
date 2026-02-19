@@ -14,8 +14,8 @@ case "$1" in
     echo "PROMISE - PROgnostic Marker Identification and Survival Evaluation"
     echo ""
     echo "Usage:"
-    echo "  docker run --rm -v \$(pwd):/work jyryu3161/prognosis-marker binary   --config=/work/config.yaml"
-    echo "  docker run --rm -v \$(pwd):/work jyryu3161/prognosis-marker survival --config=/work/config.yaml"
+    echo "  docker run --rm -v \$(pwd):/work jyryu3161/promise binary   --config=/work/config.yaml"
+    echo "  docker run --rm -v \$(pwd):/work jyryu3161/promise survival --config=/work/config.yaml"
     echo ""
     echo "Commands:"
     echo "  binary     Run binary classification (logistic regression)"
@@ -25,7 +25,7 @@ case "$1" in
     echo "  --config=<path>  Path to YAML config file (use /work/ prefix for mounted files)"
     echo ""
     echo "Example:"
-    echo "  docker run --rm -v \$(pwd):/work jyryu3161/prognosis-marker \\"
+    echo "  docker run --rm -v \$(pwd):/work jyryu3161/promise \\"
     echo "    binary --config=/work/config/example_analysis.yaml"
     ;;
   *)

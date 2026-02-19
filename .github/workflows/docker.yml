@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 env:
-  DOCKER_IMAGE: jyryu3161/prognosis-marker
+  DOCKER_IMAGE: jyryu3161/promise
 
 jobs:
   build-and-push:
