@@ -32,6 +32,10 @@ export async function readImageBase64(path: string): Promise<string> {
   return invoke<string>("fs_read_image", { path });
 }
 
+export async function readTextFile(path: string): Promise<string> {
+  return invoke<string>("fs_read_text_file", { path });
+}
+
 export async function listOutputPlots(outputDir: string): Promise<string[]> {
   return invoke<string[]>("fs_list_output_plots", { outputDir });
 }

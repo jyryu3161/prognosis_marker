@@ -62,7 +62,7 @@ cat(paste("STEPWISE_LOG:Data loaded -", nrow(dat), "samples,", ncol(dat), "colum
 # Extract parameters from config
 sample_id <- ifelse(is.null(bin_config$sample_id), "sample", bin_config$sample_id)
 Outcome <- ifelse(is.null(bin_config$outcome), "OS", bin_config$outcome)
-time_var <- ifelse(is.null(bin_config$time_variable), NULL, bin_config$time_variable)
+time_var <- if (is.null(bin_config$time_variable)) NULL else bin_config$time_variable
 numSeed <- ifelse(is.null(bin_config$num_seed), 100, as.integer(bin_config$num_seed))
 SplitProp <- ifelse(is.null(bin_config$split_prop), 0.7, as.numeric(bin_config$split_prop))
 Freq <- ifelse(is.null(bin_config$freq), 80, as.integer(bin_config$freq))
@@ -76,16 +76,12 @@ p_adjust_method <- if (is.null(bin_config$p_adjust_method)) "fdr" else bin_confi
 p_threshold <- if (is.null(bin_config$p_threshold)) 0.05 else as.numeric(bin_config$p_threshold)
 
 # Handle exclude and include lists
-excvar <- ifelse(is.null(bin_config$exclude) || length(bin_config$exclude) == 0, 
-                 c(""), 
-                 bin_config$exclude)
+excvar <- if (is.null(bin_config$exclude) || length(bin_config$exclude) == 0) c("") else bin_config$exclude
 if (length(excvar) == 1 && excvar == "") {
   excvar <- c("")
 }
 
-fixvar <- ifelse(is.null(bin_config$include) || length(bin_config$include) == 0, 
-                 "", 
-                 bin_config$include)
+fixvar <- if (is.null(bin_config$include) || length(bin_config$include) == 0) "" else bin_config$include
 if (length(fixvar) == 0 || (length(fixvar) == 1 && fixvar == "")) {
   fixvar <- ""
 }

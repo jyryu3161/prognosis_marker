@@ -155,6 +155,13 @@ pub async fn fs_open_directory(path: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+pub async fn fs_read_text_file(path: String) -> Result<String, String> {
+    fs::read_to_string(&path).map_err(|e| {
+        String::from(AppError::file_not_found(&format!("{}: {}", path, e)))
+    })
+}
+
+#[tauri::command]
 pub async fn fs_list_output_plots(output_dir: String) -> Result<Vec<String>, String> {
     let base = std::path::Path::new(&output_dir);
     if !base.exists() {

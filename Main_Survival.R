@@ -78,16 +78,12 @@ p_adjust_method <- if (is.null(surv_config$p_adjust_method)) "fdr" else surv_con
 p_threshold <- if (is.null(surv_config$p_threshold)) 0.05 else as.numeric(surv_config$p_threshold)
 
 # Handle exclude and include lists
-excvar <- ifelse(is.null(surv_config$exclude) || length(surv_config$exclude) == 0, 
-                 c(""), 
-                 surv_config$exclude)
+excvar <- if (is.null(surv_config$exclude) || length(surv_config$exclude) == 0) c("") else surv_config$exclude
 if (length(excvar) == 1 && excvar == "") {
   excvar <- c("")
 }
 
-fixvar <- ifelse(is.null(surv_config$include) || length(surv_config$include) == 0, 
-                 "", 
-                 surv_config$include)
+fixvar <- if (is.null(surv_config$include) || length(surv_config$include) == 0) "" else surv_config$include
 if (length(fixvar) == 0 || (length(fixvar) == 1 && fixvar == "")) {
   fixvar <- ""
 }

@@ -33,6 +33,7 @@ pub fn run() {
             commands::fs_ops::fs_pick_directory,
             commands::fs_ops::fs_read_csv_header,
             commands::fs_ops::fs_read_image,
+            commands::fs_ops::fs_read_text_file,
             commands::fs_ops::fs_list_output_plots,
             commands::fs_ops::fs_save_file,
             commands::fs_ops::fs_open_directory,
