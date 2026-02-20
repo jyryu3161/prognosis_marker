@@ -59,6 +59,7 @@ pub fn run() {
             commands::setup::setup_install_env,
             commands::setup::setup_cancel,
             commands::setup::setup_pull_docker,
+            commands::setup::setup_check_image_update,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -130,3 +130,12 @@ export async function cancelSetup(): Promise<void> {
 export async function pullDockerImage(): Promise<void> {
   return invoke("setup_pull_docker");
 }
+
+export interface ImageUpdateStatus {
+  hasUpdate: boolean;
+  error?: string;
+}
+
+export async function checkImageUpdate(): Promise<ImageUpdateStatus> {
+  return invoke<ImageUpdateStatus>("setup_check_image_update");
+}

@@ -1,7 +1,7 @@
 use super::hide_console;
 use crate::commands::analysis::find_project_root;
 use crate::commands::runtime::find_executable;
-use crate::models::config::EnvStatus;
+use crate::models::config::{EnvStatus, ImageUpdateStatus};
 use crate::models::error::AppError;
 use std::io::{BufRead, BufReader};
 use std::sync::Mutex;
@@ -242,6 +242,104 @@ pub async fn setup_pull_docker(
     let _ = app.emit("setup://complete", serde_json::json!({ "success": true }));
 
     Ok(())
+}
+
+/// Check whether a newer Docker image is available on Docker Hub.
+/// Compares the local image's repo-digest with digests reported by the Hub API.
+/// Returns has_update=false (silently) on network errors so startup is never blocked.
+#[tauri::command]
+pub async fn setup_check_image_update() -> Result<ImageUpdateStatus, String> {
+    // 1. Get the local image's repo digest (set when the image was pulled)
+    let local_out = hide_console(std::process::Command::new("docker"))
+        .args([
+            "image",
+            "inspect",
+            "jyryu3161/promise:latest",
+            "--format",
+            "{{index .RepoDigests 0}}",
+        ])
+        .output()
+        .map_err(|e| format!("Docker error: {}", e))?;
+
+    if !local_out.status.success() {
+        return Ok(ImageUpdateStatus { has_update: false, error: None });
+    }
+
+    let local_str = String::from_utf8_lossy(&local_out.stdout).trim().to_string();
+    let local_sha = extract_sha256(&local_str);
+
+    if local_sha.is_empty() {
+        // Locally built image (no repo digest) — cannot compare
+        return Ok(ImageUpdateStatus { has_update: false, error: None });
+    }
+
+    // 2. Fetch tag metadata from Docker Hub (no auth required for public images)
+    let client = match reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(15))
+        .user_agent("promise-desktop")
+        .build()
+    {
+        Ok(c) => c,
+        Err(e) => {
+            return Ok(ImageUpdateStatus {
+                has_update: false,
+                error: Some(format!("HTTP client: {}", e)),
+            });
+        }
+    };
+
+    let resp = match client
+        .get("https://hub.docker.com/v2/repositories/jyryu3161/promise/tags/latest")
+        .send()
+        .await
+    {
+        Ok(r) => r,
+        Err(_) => {
+            // Network unavailable — skip check silently
+            return Ok(ImageUpdateStatus { has_update: false, error: None });
+        }
+    };
+
+    let json: serde_json::Value = match resp.json().await {
+        Ok(v) => v,
+        Err(e) => {
+            return Ok(ImageUpdateStatus {
+                has_update: false,
+                error: Some(format!("Parse error: {}", e)),
+            });
+        }
+    };
+
+    // Collect all digests: manifest-list digest + per-platform digests
+    let mut remote_shas: Vec<String> = Vec::new();
+    if let Some(d) = json["digest"].as_str() {
+        let s = extract_sha256(d);
+        if !s.is_empty() {
+            remote_shas.push(s);
+        }
+    }
+    if let Some(images) = json["images"].as_array() {
+        for img in images {
+            if let Some(d) = img["digest"].as_str() {
+                let s = extract_sha256(d);
+                if !s.is_empty() {
+                    remote_shas.push(s);
+                }
+            }
+        }
+    }
+
+    let has_update = !remote_shas.is_empty() && !remote_shas.contains(&local_sha);
+
+    Ok(ImageUpdateStatus { has_update, error: None })
+}
+
+fn extract_sha256(s: &str) -> String {
+    if let Some(pos) = s.find("sha256:") {
+        s[pos..].trim().to_string()
+    } else {
+        s.trim().to_string()
+    }
 }
 
 // ── Helper functions ──

@@ -28,6 +28,13 @@ pub struct RuntimeInfo {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct ImageUpdateStatus {
+    pub has_update: bool,
+    pub error: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct EnvStatus {
     pub pixi_installed: bool,
     pub r_available: bool,
