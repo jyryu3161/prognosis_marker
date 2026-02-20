@@ -154,6 +154,67 @@ pub async fn fs_open_directory(path: String) -> Result<(), String> {
     Ok(())
 }
 
+/// Sort key for plot files: (type_order, name_order, extension_order, filename)
+/// type_order:  0=Binary, 1=Survival, 2=Other
+/// name_order:  predefined plot sequence within each type
+/// extension_order: 0=svg, 1=png, 2=tiff, 3=pdf (SVG preferred for display)
+fn plot_sort_key(path: &str) -> (u8, u8, u8, String) {
+    let normalized = path.replace('\\', "/");
+    let basename = normalized
+        .split('/')
+        .last()
+        .unwrap_or(&normalized)
+        .to_lowercase();
+    let stem = basename
+        .trim_end_matches(".svg")
+        .trim_end_matches(".png")
+        .trim_end_matches(".tiff")
+        .trim_end_matches(".tif")
+        .trim_end_matches(".pdf");
+
+    let type_order: u8 = if stem.starts_with("binary") {
+        0
+    } else if stem.starts_with("survival") || stem.starts_with("surv") {
+        1
+    } else {
+        2
+    };
+
+    let name_order: u8 = if stem.contains("roc") {
+        0
+    } else if stem.contains("kaplan") || stem.contains("_km") {
+        1
+    } else if stem.contains("importance") || stem.contains("varimp") || stem.contains("var_imp") {
+        2
+    } else if stem.contains("time") && stem.contains("auc") {
+        3
+    } else if stem.contains("auc") {
+        4
+    } else if stem.contains("dca") {
+        5
+    } else if stem.contains("prob") {
+        6
+    } else if stem.contains("confusion") {
+        7
+    } else if stem.contains("stepwise") || stem.contains("process") {
+        8
+    } else {
+        9
+    };
+
+    let ext_order: u8 = if basename.ends_with(".svg") {
+        0
+    } else if basename.ends_with(".png") {
+        1
+    } else if basename.ends_with(".tiff") || basename.ends_with(".tif") {
+        2
+    } else {
+        3
+    };
+
+    (type_order, name_order, ext_order, basename)
+}
+
 #[tauri::command]
 pub async fn fs_read_text_file(path: String) -> Result<String, String> {
     fs::read_to_string(&path).map_err(|e| {
@@ -200,16 +261,16 @@ pub async fn fs_list_output_plots(output_dir: String) -> Result<Vec<String>, Str
         }
     }
 
-    // Sort: prefer SVG over TIFF (SVG renders in browser, TIFF doesn't)
-    plots.sort_by(|a, b| {
-        let a_svg = a.ends_with(".svg");
-        let b_svg = b.ends_with(".svg");
-        match (a_svg, b_svg) {
-            (true, false) => std::cmp::Ordering::Less,
-            (false, true) => std::cmp::Ordering::Greater,
-            _ => a.cmp(b),
-        }
-    });
+    // Normalize path separators to forward slash (Windows uses backslash)
+    let plots: Vec<String> = plots
+        .into_iter()
+        .map(|p| p.replace('\\', "/"))
+        .collect();
+
+    // Sort: Binary first, then Survival, then others.
+    // Within each group, use predefined plot order.
+    let mut plots = plots;
+    plots.sort_by_key(|p| plot_sort_key(p));
 
     Ok(plots)
 }

@@ -67,7 +67,7 @@ function groupByName(
   const map = new Map<string, { ext: string; relPath: string }[]>();
 
   for (const f of allFiles) {
-    const basename = f.replace(/^.*\//, "");
+    const basename = f.replace(/^.*[/\\]/, "");
     const dotIdx = basename.lastIndexOf(".");
     if (dotIdx === -1) continue;
     const stem = basename.slice(0, dotIdx);
@@ -152,7 +152,7 @@ function PlotViewer({
                 }`}
               >
                 {plot
-                  .replace(/^.*\//, "")
+                  .replace(/^.*[/\\]/, "")
                   .replace(/\.(png|tiff|svg|pdf)$/, "")
                   .replace(/^Binary_|^Survival_/i, "")
                   .replace(/_/g, " ")}
@@ -285,7 +285,7 @@ function categorize(plots: string[]): { label: string; files: string[] }[] {
   const categories: Record<string, string[]> = {};
   for (const plot of plots) {
     const basename = plot
-      .replace(/^.*\//, "")
+      .replace(/^.*[/\\]/, "")
       .replace(/\.(png|tiff|svg|pdf)$/, "")
       .toLowerCase();
     let cat = "Other";
