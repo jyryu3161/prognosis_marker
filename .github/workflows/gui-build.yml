@@ -48,6 +48,10 @@ jobs:
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Add macOS universal targets
+        if: matrix.platform == 'macos-latest'
+        run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
+
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
@@ -79,28 +83,83 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           projectPath: gui
-          tagName: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
-          releaseName: ${{ github.ref_type == 'tag' && format('PROMISE {0}', github.ref_name) || '' }}
-          releaseBody: |
-            PROMISE GUI desktop application.
+          args: ${{ matrix.platform == 'macos-latest' && '--target universal-apple-darwin' || '' }}
 
-            Download the installer for your platform:
-            - **macOS**: `.dmg` (Apple Silicon)
-            - **Windows**: `.msi` or `.exe`
-            - **Linux**: `.deb` or `.AppImage`
-          releaseDraft: true
-          prerelease: false
+      - name: Fix macOS code signature
+        if: matrix.platform == 'macos-latest'
+        run: |
+          APP_DIR="gui/src-tauri/target/universal-apple-darwin/release/bundle/macos"
+          APP_PATH="$APP_DIR/PROMISE.app"
+          if [ -d "$APP_PATH" ]; then
+            echo "Removing existing signature..."
+            codesign --remove-signature "$APP_PATH" || true
+            echo "Re-signing with ad-hoc signature..."
+            codesign --force --deep --sign - "$APP_PATH"
+            echo "Verifying signature..."
+            codesign --verify --verbose "$APP_PATH"
+          else
+            echo "Warning: $APP_PATH not found"
+            find gui/src-tauri/target -name "*.app" -type d 2>/dev/null || true
+          fi
+
+      - name: Recreate macOS DMG
+        if: matrix.platform == 'macos-latest'
+        run: |
+          BUNDLE_DIR="gui/src-tauri/target/universal-apple-darwin/release/bundle"
+          DMG_PATH=$(find "$BUNDLE_DIR/dmg" -name "*.dmg" | head -1)
+          APP_PATH="$BUNDLE_DIR/macos/PROMISE.app"
+          if [ -n "$DMG_PATH" ] && [ -d "$APP_PATH" ]; then
+            echo "Recreating DMG with re-signed app..."
+            echo "  DMG: $DMG_PATH"
+            echo "  APP: $APP_PATH"
+            rm "$DMG_PATH"
+            hdiutil create -volname "PROMISE" -srcfolder "$APP_PATH" \
+              -ov -format UDZO "$DMG_PATH"
+            echo "DMG recreated successfully"
+          else
+            echo "Warning: DMG or APP not found"
+            echo "  DMG_PATH=$DMG_PATH"
+            echo "  APP_PATH=$APP_PATH"
+          fi
 
       - name: Upload build artifacts
-        if: github.ref_type != 'tag'
         uses: actions/upload-artifact@v4
         with:
           name: PROMISE-${{ matrix.label }}
           path: |
+            gui/src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
             gui/src-tauri/target/release/bundle/dmg/*.dmg
-            gui/src-tauri/target/release/bundle/macos/*.app
             gui/src-tauri/target/release/bundle/msi/*.msi
             gui/src-tauri/target/release/bundle/nsis/*.exe
             gui/src-tauri/target/release/bundle/deb/*.deb
             gui/src-tauri/target/release/bundle/appimage/*.AppImage
           if-no-files-found: ignore
+
+  release:
+    if: github.ref_type == 'tag'
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: List artifacts
+        run: find artifacts -type f | head -50
+
+      - name: Create GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create ${{ github.ref_name }} \
+            --repo ${{ github.repository }} \
+            --title "PROMISE ${{ github.ref_name }}" \
+            --draft \
+            --notes "PROMISE GUI desktop application.
+
+          Download the installer for your platform:
+          - **macOS**: \`.dmg\` (Universal — Apple Silicon + Intel)
+          - **Windows**: \`.msi\` or \`.exe\`
+          - **Linux**: \`.deb\` or \`.AppImage\`" \
+            $(find artifacts -type f \( -name "*.dmg" -o -name "*.msi" -o -name "*.exe" -o -name "*.deb" -o -name "*.AppImage" \) | sort)

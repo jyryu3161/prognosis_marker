@@ -22,8 +22,7 @@ AUC-driven stepwise variable selection for prognostic gene signature discovery. 
 
 | Platform | File |
 |----------|------|
-| macOS (Apple Silicon) | `.dmg` |
-| macOS (Intel) | `.dmg` |
+| macOS (Universal — Apple Silicon + Intel) | `.dmg` |
 | Windows | `.msi` / `.exe` |
 | Linux | `.deb` / `.AppImage` |
 
@@ -139,10 +138,16 @@ output_dir/
 
 ## Troubleshooting
 
-- **macOS "damaged" error**: The app is not Apple-signed. Remove the quarantine flag after installing:
+- **macOS "damaged" or "unidentified developer" error**: The app is not Apple-signed.
+
+  **Option 1** (recommended): Right-click the app → "Open" → Click "Open" in the dialog.
+
+  **Option 2**: Remove quarantine flag:
   ```bash
   xattr -cr /Applications/PROMISE.app
   ```
+
+  **Option 3**: System Settings → Privacy & Security → scroll to the blocked app → "Open Anyway"
 - **"Docker Desktop Required" screen**: Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) and make sure it is running before launching the app.
 - **Image download fails**: Check your internet connection. You can also pull manually: `docker pull jyryu3161/promise`
 - **Analysis fails in Docker mode**: Check that the data file path and output directory are accessible. Docker needs permission to mount those directories.
