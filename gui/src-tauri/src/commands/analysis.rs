@@ -1,4 +1,4 @@
-use super::hide_console;
+use super::{find_docker, hide_console};
 use crate::models::error::AppError;
 use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
@@ -514,7 +514,7 @@ async fn run_via_docker(
 
     let _ = app.emit("analysis://log", format!("[PROMISE] Docker mode: docker {}", docker_args.join(" ")));
 
-    let mut child = hide_console(std::process::Command::new("docker"))
+    let mut child = hide_console(std::process::Command::new(&find_docker()))
         .args(&docker_args)
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())

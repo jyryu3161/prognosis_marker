@@ -1,4 +1,4 @@
-use super::hide_console;
+use super::{find_docker, hide_console};
 use crate::commands::analysis::find_project_root;
 use crate::commands::runtime::find_executable;
 use crate::models::config::{EnvStatus, ImageUpdateStatus};
@@ -217,7 +217,7 @@ pub async fn setup_pull_docker(
     let _ = app.emit("setup://log", "Pulling Docker image jyryu3161/promise...");
     let _ = app.emit("setup://progress", serde_json::json!({ "step": 1, "total": 1, "message": "Pulling Docker image..." }));
 
-    let mut child = hide_console(std::process::Command::new("docker"))
+    let mut child = hide_console(std::process::Command::new(&find_docker()))
         .args(["pull", "jyryu3161/promise"])
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
@@ -250,7 +250,7 @@ pub async fn setup_pull_docker(
 #[tauri::command]
 pub async fn setup_check_image_update() -> Result<ImageUpdateStatus, String> {
     // 1. Get the local image's repo digest (set when the image was pulled)
-    let local_out = hide_console(std::process::Command::new("docker"))
+    let local_out = hide_console(std::process::Command::new(&find_docker()))
         .args([
             "image",
             "inspect",
@@ -454,7 +454,7 @@ fn check_docker_daemon() -> bool {
         }
     }
 
-    hide_console(std::process::Command::new("docker"))
+    hide_console(std::process::Command::new(&find_docker()))
         .args(["info"])
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
@@ -464,7 +464,7 @@ fn check_docker_daemon() -> bool {
 }
 
 fn check_docker_image(image: &str) -> bool {
-    hide_console(std::process::Command::new("docker"))
+    hide_console(std::process::Command::new(&find_docker()))
         .args(["image", "inspect", image])
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
