@@ -67,7 +67,7 @@ jobs:
           echo "Setting app version to: $VERSION"
           node -e "
             const fs = require('fs');
-            const p = 'gui/src-tauri/tauri.conf.json';
+            const p = 'gui/package.json';
             const c = JSON.parse(fs.readFileSync(p, 'utf8'));
             c.version = process.argv[1];
             fs.writeFileSync(p, JSON.stringify(c, null, 2) + '\n');
