@@ -1,3 +1,5 @@
+import { useState, useEffect } from "react";
+import { getVersion } from "@tauri-apps/api/app";
 import { cn } from "@/lib/utils";
 
 export type Page = "setup" | "results" | "settings";
@@ -15,6 +17,11 @@ const navItems: { id: Page; label: string; icon: string }[] = [
 ];
 
 export function Sidebar({ currentPage, onPageChange, analysisRunning }: SidebarProps) {
+  const [version, setVersion] = useState<string>("");
+  useEffect(() => {
+    getVersion().then(setVersion).catch(() => setVersion(""));
+  }, []);
+
   return (
     <aside className="w-48 border-r border-border bg-secondary/30 flex flex-col">
       <div className="p-4 border-b border-border">
@@ -41,9 +48,11 @@ export function Sidebar({ currentPage, onPageChange, analysisRunning }: SidebarP
           </button>
         ))}
       </nav>
-      <div className="p-3 border-t border-border text-xs text-muted-foreground">
-        v0.1.0
-      </div>
+      {version && (
+        <div className="p-3 border-t border-border text-xs text-muted-foreground">
+          v{version}
+        </div>
+      )}
     </aside>
   );
 }

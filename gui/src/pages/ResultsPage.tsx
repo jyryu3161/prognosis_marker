@@ -103,7 +103,7 @@ function PlotViewer({
     (f) => f.endsWith(".svg") || f.endsWith(".png"),
   );
 
-  const plotCategories = categorize(displayable);
+  const sections = groupByAnalysisType(displayable);
 
   // Auto-select first plot
   useEffect(() => {
@@ -122,8 +122,7 @@ function PlotViewer({
     readImageBase64(path)
       .then((data: string) => {
         const ext = selectedPlot.split(".").pop()?.toLowerCase();
-        const mime =
-          ext === "svg" ? "image/svg+xml" : "image/png";
+        const mime = ext === "svg" ? "image/svg+xml" : "image/png";
         setImageData(`data:${mime};base64,${data}`);
       })
       .catch((e: unknown) => {
@@ -138,26 +137,35 @@ function PlotViewer({
     <div className="border border-border rounded-lg p-4">
       <h3 className="text-sm font-medium mb-3">Plot Preview</h3>
 
-      <div className="flex gap-1 flex-wrap mb-3 border-b border-border pb-2">
-        {plotCategories.map(({ label, files }) => (
-          <div key={label} className="flex gap-1">
-            {files.map((plot) => (
-              <button
-                key={plot}
-                onClick={() => setSelectedPlot(plot)}
-                className={`px-3 py-1.5 text-xs rounded-t-md transition-colors ${
-                  selectedPlot === plot
-                    ? "bg-primary/10 text-primary border-b-2 border-primary font-medium"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                }`}
-              >
-                {plot
-                  .replace(/^.*[/\\]/, "")
-                  .replace(/\.(png|tiff|svg|pdf)$/, "")
-                  .replace(/^Binary_|^Survival_/i, "")
-                  .replace(/_/g, " ")}
-              </button>
-            ))}
+      {/* Sections: Binary Classification / Survival Analysis */}
+      <div className="mb-3 border-b border-border pb-3 space-y-2">
+        {sections.map(({ section, files }, si) => (
+          <div key={section}>
+            {/* Section header — only shown when multiple sections exist */}
+            {sections.length > 1 && (
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1 mt-1">
+                {section}
+              </p>
+            )}
+            <div className="flex gap-1 flex-wrap">
+              {files.map((plot) => (
+                <button
+                  key={plot}
+                  onClick={() => setSelectedPlot(plot)}
+                  className={`px-3 py-1.5 text-xs rounded-md transition-colors ${
+                    selectedPlot === plot
+                      ? "bg-primary/10 text-primary border border-primary/40 font-medium"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50 border border-transparent"
+                  }`}
+                >
+                  {plotLabel(plot)}
+                </button>
+              ))}
+            </div>
+            {/* Divider between sections */}
+            {si < sections.length - 1 && (
+              <div className="mt-2 border-t border-dashed border-border/60" />
+            )}
           </div>
         ))}
       </div>
@@ -281,26 +289,35 @@ function ExportPanel({ outputDir, allFiles }: { outputDir: string; allFiles: str
   );
 }
 
-function categorize(plots: string[]): { label: string; files: string[] }[] {
-  const categories: Record<string, string[]> = {};
-  for (const plot of plots) {
-    const basename = plot
-      .replace(/^.*[/\\]/, "")
-      .replace(/\.(png|tiff|svg|pdf)$/, "")
-      .toLowerCase();
-    let cat = "Other";
-    if (basename.includes("roc")) cat = "ROC";
-    else if (basename.includes("importance")) cat = "Importance";
-    else if (basename.includes("kaplan") || basename.includes("km")) cat = "KM";
-    else if (basename.includes("auc") || basename.includes("time_dependent")) cat = "AUC";
-    else if (basename.includes("dca")) cat = "DCA";
-    else if (basename.includes("stepwise") || basename.includes("process"))
-      cat = "Stepwise";
+/** Split plots into Binary / Survival / Other sections, preserving Rust sort order. */
+function groupByAnalysisType(
+  plots: string[],
+): { section: string; files: string[] }[] {
+  const binary: string[] = [];
+  const survival: string[] = [];
+  const other: string[] = [];
 
-    if (!categories[cat]) categories[cat] = [];
-    categories[cat].push(plot);
+  for (const plot of plots) {
+    const base = plot.replace(/^.*[/\\]/, "").toLowerCase();
+    if (base.startsWith("binary")) binary.push(plot);
+    else if (base.startsWith("survival") || base.startsWith("surv")) survival.push(plot);
+    else other.push(plot);
   }
-  return Object.entries(categories).map(([label, files]) => ({ label, files }));
+
+  const result: { section: string; files: string[] }[] = [];
+  if (binary.length > 0) result.push({ section: "Binary Classification", files: binary });
+  if (survival.length > 0) result.push({ section: "Survival Analysis", files: survival });
+  if (other.length > 0) result.push({ section: "Other", files: other });
+  return result;
+}
+
+/** Short display label for a plot path. */
+function plotLabel(plot: string): string {
+  return plot
+    .replace(/^.*[/\\]/, "")
+    .replace(/\.(png|tiff|svg|pdf)$/i, "")
+    .replace(/^Binary_|^Survival_/i, "")
+    .replace(/_/g, " ");
 }
 
 export function ResultsPage() {

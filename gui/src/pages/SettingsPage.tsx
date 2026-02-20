@@ -1,10 +1,15 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { getVersion } from "@tauri-apps/api/app";
 import { useConfigStore } from "@/stores/configStore";
 import { checkEnv, pullDockerImage } from "@/lib/tauri/commands";
 
 export function SettingsPage() {
   const envStatus = useConfigStore((s) => s.envStatus);
   const setEnvStatus = useConfigStore((s) => s.setEnvStatus);
+  const [version, setVersion] = useState<string>("");
+  useEffect(() => {
+    getVersion().then(setVersion).catch(() => setVersion(""));
+  }, []);
 
   const [dockerPulling, setDockerPulling] = useState(false);
 
@@ -86,7 +91,7 @@ export function SettingsPage() {
       <section className="border border-border rounded-lg p-4 space-y-3">
         <h3 className="text-sm font-medium">About</h3>
         <div className="text-sm text-muted-foreground space-y-1">
-          <p>PROMISE v0.1.0</p>
+          <p>PROMISE{version ? ` v${version}` : ""}</p>
           <p>PROgnostic Marker Identification and Survival Evaluation</p>
           <p>Cross-platform desktop application powered by Tauri + Docker</p>
         </div>
