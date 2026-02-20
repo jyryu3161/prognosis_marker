@@ -33,15 +33,7 @@ export function useAnalysisRunner() {
     const cleanups: (() => void)[] = [];
 
     onAnalysisProgress((event) => {
-      const store = useAnalysisStore.getState();
-      const prev = store.progress;
-      if (event.type === "total") {
-        setProgress(0, event.total, event.message);
-      } else if (event.type === "iteration_complete") {
-        setProgress(event.current, prev.total || event.total, event.message);
-      } else {
-        setProgress(event.current, event.total || prev.total, event.message);
-      }
+      setProgress(event.current, event.total, event.message);
     }).then((unlisten) => cleanups.push(unlisten));
 
     onAnalysisLog((line) => {
