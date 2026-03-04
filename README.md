@@ -121,6 +121,7 @@ evidence:
   gene_file: evidence_genes.csv
   score_threshold: 0.5
 ```
+`score_threshold` is the minimum [Open Targets](https://platform.opentargets.org/) overall association score (0–1). Only genes scoring at or above this value are included as candidates. Higher values yield fewer, more strongly disease-associated genes.
 
 </details>
 

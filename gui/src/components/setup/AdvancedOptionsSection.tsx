@@ -412,6 +412,10 @@ export function AdvancedOptionsSection() {
                   }
                   className="h-9 px-3 rounded-md border border-border bg-background text-sm font-mono focus:outline-none focus:ring-1 focus:ring-primary"
                 />
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  Open Targets overall association score (0-1). Only genes with a score &ge; this value are used as candidates.
+                  Higher values select fewer, more strongly associated genes.
+                </p>
               </div>
 
               {/* Filtered count display */}

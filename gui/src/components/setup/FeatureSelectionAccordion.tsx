@@ -76,9 +76,25 @@ export function FeatureSelectionAccordion() {
           {/* Quick select from data columns */}
           {availableColumns.length > 0 && (
             <div>
-              <label className="text-xs font-medium text-muted-foreground block mb-1">
-                Quick exclude columns from data
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-medium text-muted-foreground">
+                  Quick exclude columns from data
+                </label>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setParam("excludeFeatures", [...new Set([...excludeFeatures, ...availableColumns])])}
+                    className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    Select All
+                  </button>
+                  <button
+                    onClick={() => setParam("excludeFeatures", excludeFeatures.filter((f) => !availableColumns.includes(f)))}
+                    className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    Deselect All
+                  </button>
+                </div>
+              </div>
               <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto">
                 {availableColumns.map((col) => {
                   const isExcluded = excludeFeatures.includes(col);
